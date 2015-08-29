@@ -51,7 +51,7 @@ end
 local function main()
 
 	while true do
-		if ir:remote(1) ~= 0 then
+		if touch:touch() then
 			--reset
 			ev3.playTone(100, 0.5)
 			return
@@ -60,6 +60,17 @@ local function main()
 		if leftColour:value() == col_reflective and rightColour:value() == col_reflective then
 			--In toxic spill
 			break
+		end
+
+		if ir:proximity() <= 6 then
+			--water tower
+			tank:turnRight(30)
+			tank:on_for_rotations(75, 75, 1.5)
+			tank:turnLeft(30)
+			tank:on_for_rotations(75, 75, 3)
+			tank:turnLeft(30)
+			tank:on_for_rotations(75, 75, 1.5)
+			tank:turnRight(30)
 		end
 
 		if leftMotor:value() == col_green then
@@ -181,5 +192,6 @@ local function main()
 end
 
 while true do
+	while touch:touch() do end
 	main()
 end

@@ -1,5 +1,4 @@
 require 'lfs'
-require 'bit'
 
 ev3 = {}
 
@@ -452,6 +451,19 @@ ev3.newTank = function(leftMotor, rightMotor)
 		if not result then return nil, err end
 
 		return true
+	end
+
+	device.turn = function(self, power, direction, brake, nonBlocking)
+		--direction from -90 to face left to 90 to face right
+		return self:on_for_degrees(power, -power, direction/2, brake, nonBlocking)
+	end
+
+	device.turnLeft = function(self, power, brake, nonBlocking)
+		return self:turn(power, -90, brake, nonBlocking)
+	end
+
+	device.turnRight = function(self, power, nonBlocking)
+		return self:turn(power, 90, brake, nonBlocking)
 	end
 
 	device.reset = function(self)
