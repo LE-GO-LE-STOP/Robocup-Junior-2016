@@ -1,0 +1,6 @@
+option confirm off
+option batch continue
+open sftp://legolestop:legolestop@%ev3_ip%/
+keepuptodate C:\Users\Angus\Robocup\src /home/f7/robocup -delete
+close
+exit

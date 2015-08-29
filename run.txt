@@ -1,0 +1,9 @@
+cd /home/legolestop/robocup
+echo -e "Connected!\r\n"
+while true; do
+	clear
+	lua main.lua
+	echo -e "Press any key to run again\r\n"
+	read -n1
+done
+exit
