@@ -1,10 +1,10 @@
-require 'ev3'
+dofile('ev3.lua')
 
 local leftMotor = ev3.newMotor(OUT_D)
 local rightMotor = ev3.newMotor(OUT_A)
 local clawMotor = ev3.newMotor(OUT_B)
 local leftColour = ev3.newColourSensor(IN_2)
-leftColour:mode(RECFLECT)
+leftColour:mode(REFLECT)
 local rightColour = ev3.newColourSensor(IN_1)
 rightColour:mode(REFLECT)
 local ir = ev3.newInfraredSensor(IN_4)

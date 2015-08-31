@@ -1,4 +1,5 @@
-require 'lfs'
+--require 'lfs'
+dofile('dummyio.lua')
 
 ev3 = {}
 
@@ -376,10 +377,10 @@ ev3.newMotor = function(port)
 			local result, err = self:on()
 			if not result then return nil, err end
 
-			if degrees => 0 then
-				while self.raw:position() < targetPosition then end
+			if degrees >= 0 then
+				while self.raw:position() < targetPosition do end
 			else
-				while self.raw:position() > targetPosition then end
+				while self.raw:position() > targetPosition do end
 			end
 
 			local result, err = self:off()
