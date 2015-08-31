@@ -10,7 +10,7 @@ local function stringSplit(inputString)
 	return output
 end
 
-local function sleep(time)
+function sleep(time)
 	local timeStart = os.clock()
 	while os.clock() - timeStart <= time do end
 end
@@ -704,6 +704,21 @@ ev3.newUltrasonicSensor = function(port)
 			return true
 		end
 	end
+end
+
+--Buttons
+ev3.getButtons = function()
+	local rawData = io.popen("python buttons.py")
+	local output = {}
+	for i in rawData:lines() do
+		local data = stringSplit(i)
+		local state = false
+		if data[2] == "pressed" then
+			state = true
+		end
+		output[data[1]] = state
+	end
+	return output
 end
 
 --Output

@@ -17,39 +17,39 @@ local tank = ev3.newTank(leftMotor, rightMotor)
 while not touch:touch() do --[[wait for any button press]] end
 while touch:touch() do end
 local col_white = leftColour:value()
+ev3.playTone(600, 0.2)
 
 --calibrate black
 while not touch:touch() do --[[wait for any button press]] end
 while touch:touch() do end
 local col_black = leftColour:value()
+ev3.playTone(600, 0.2)
 
 --calibrate reflective
 while not touch:touch() do --[[wait for any button press]] end
 while touch:touch() do end
 local col_reflective = leftColour:value()
+ev3.playTone(600, 0.2)
 
 --calibrate green
 while not touch:touch() do --[[wait for any button press]] end
 while touch:touch() do end
 local col_green = leftColour:value()
+ev3.playTone(600, 0.2)
 
 --calibrate red
 while not touch:touch() do --[[wait for any button press]] end
 while touch:touch() do end
 local col_red = leftColour:value()
+ev3.playTone(600, 0.2)
 
 --calibrate blue
 while not touch:touch() do --[[wait for any button press]] end
 while touch:touch() do end
 local col_blue = leftColour:value()
-
-local function sleep(time)
-	local timeStart = os.clock()
-	while os.clock() - timeStart <= time do end
-end
+ev3.playTone(1000, 0.2)
 
 local function main()
-
 	while true do
 		if touch:touch() then
 			--reset
@@ -80,6 +80,7 @@ local function main()
 			tank:off("hold")
 			tank:on_for_rotations(-10, -10, 0.1, "hold")
 			rightMotor:on(30)
+			--see the tile for explanation
 			while rightMotor:value() ~= col_black do end
 			while rightMotor:value() ~= col_white do end
 			while rightMotor:value() ~= col_black do end
@@ -96,6 +97,7 @@ local function main()
 			tank:off("hold")
 			tank:on_for_rotations(-10, -10, 0.1, "hold")
 			leftMotor:on(30)
+			--see the tile for explanation
 			while leftMotor:value() ~= col_black do end
 			while leftMotor:value() ~= col_white do end
 			while leftMotor:value() ~= col_black do end

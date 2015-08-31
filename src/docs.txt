@@ -1,0 +1,730 @@
+ev3.lua by Angus Trau
+
+Constants:
+ev3.lua adds several constants to make programming easier these are:
+OUT_<PORT>
+IN_<PORT>
+
+--Colour sensor colours
+NOCOLOUR
+BLACK
+BLUE
+GREEN
+YELLOW
+RED
+WHITE
+BROWN
+
+--Colour sensor modes
+COLOUR
+REFLECT
+AMBIENT
+
+--IR sensor mode
+PROXIMITY
+BEACON
+REMOTE
+
+--Ultrasonic sensor mode
+SINGLE_CM --Turns on the sensor every time a measurement is made. Measurement in centimeters.
+SINGLE_INCH --Turns on the sensor every time a measurement is made. Measurement in inches.
+CONTINUOS_CM --Sensor is always on. Measurement in centimeters.
+CONTINUOS_INCH --Sensor is always on. Measurement in inches.
+LISTEN --Used to find out if other ultrasonic sensors are in use.
+
+Usage:
+
+require 'ev3'
+Description:
+Imports the library
+
+Parameters:
+None
+
+Returns:
+nil
+
+-----
+
+sleep(n)
+Description:
+Pauses the program for the specified seconds
+
+Parameters:
+n - How long to sleep for in seconds
+
+Returns:
+nil
+
+-----
+
+Motor
+
+---
+motor = ev3.newMotor([port])
+Description:
+Creates a new object that can be used to manipulate a motor
+
+Parameters:
+[port] - Optional. The port of the motor you wish to control. OUT_A, OUT_B, OUT_C, OUT_D. Defaults to the first port it finds a motor at.
+
+Returns:
+motor - An object used to control the specified motor
+
+-----
+
+motor:on(power)
+Description:
+Turns on the motor
+
+Parameters:
+power - The power to run the motor at
+
+Returns:
+true - Successfully turned on the motor
+nil, error - The motor could not be turned on
+
+-----
+
+motor:off([brake])
+Description:
+Turns off the motor
+
+Parameters:
+[brake] - Optional. The type of braking that is used. "coast", "hold", "brake". Defaults to "brake".
+
+Returns:
+true - Successfully stopped the motor
+nil, error - Could not stop the motor
+
+-----
+
+motor:on_for_seconds(power, seconds, [brake], [nonBlocking])
+Description:
+Turns on the motor for an amount of time
+
+Parameters:
+power - The power to run the motor at
+seconds - The time to run the motor for, in seconds
+[brake] - Optional. The type of braking that is used. "coast", "hold", "brake". Defaults to "brake".
+[nonBlocking] - Optional. Specifies if the function returns immediately, without waiting for the action to finish. Defaults to false.
+
+Returns:
+true - Successfully ran the motor
+nil, error - Could not run the motor
+
+-----
+
+motor:on_for_degrees(power, degrees, [brake], [nonBlocking])
+Description:
+Turns motor on for degrees
+
+Parameters:
+power - The power to run the motor at
+degrees - The amount of degrees to turn the motor for
+[brake] - Optional. The type of braking that is used. "coast", "hold", "brake". Defaults to "brake".
+[nonBlocking] - Optional. Specifies if the function returns immediately, without waiting for the action to finish. Defaults to false.
+
+Returns:
+true - Successfully ran the motor
+nil, error - Could not run the motor
+
+-----
+
+motor:on_for_rotations(power, rotations, [brake], [nonBlocking])
+Description:
+Turns motor on for rotations
+
+Parameters:
+power - The power to run the motor at
+rotations - The amount of rotations to run the motor for
+[brake] - Optional. The type of braking that is used. "coast", "hold", "brake". Defaults to "brake".
+[nonBlocking] - Optional. Specifies if the function returns immediately, without waiting for the action to finish. Defaults to false.
+
+Returns:
+true - Successfully ran the motor
+nil, error - Could not run the motor
+
+-----
+
+motor:reset()
+Description:
+Resets the motor to its original position.
+
+Parameters:
+None
+
+Returns:
+true - Successfully reset the motor
+
+-----
+
+motor.raw:[command]([value])
+Description:
+A way to use all the features of the tacho-motor class in ev3dev
+
+Parameters:
+See _
+
+Returns:
+nil
+
+-----
+
+Tank
+
+-----
+
+tank = ev3.newTank(leftMotor, rightMotor)
+Description:
+Creates a new object that can be used to manipulate 2 motors like a tank
+
+Parameters:
+leftMotor - The left motor
+rightMotor - The right motor
+
+Returns:
+tank - An object that can be used to manipulate the tank
+
+-----
+
+tank:on(leftPower, rightPower)
+Description:
+Turns on both motors
+
+Parameters:
+leftPower - Turns on the left motor at this power
+rightPower - Turns on the right motor at this power
+
+Returns:
+true - Successfully turned on the motors
+nil, error - Could not turn on the motors
+
+-----
+
+tank:off([brake])
+Description:
+Turns off the motors
+
+Parameters:
+[brake] - Optional. The type of braking that is used. "coast", "hold", "brake". Defaults to "brake".
+
+Returns:
+true - Successfully turned off the motors
+nil, error - Could not turn off the motors
+
+-----
+
+tank:on_for_seconds(leftPower, rightPower, seconds, [brake], [nonBlocking])
+Description:
+Turns on the motors for seconds
+
+Parameters:
+leftPower - The power to run the left motor at
+rightPower - The power to run the right motor at
+seconds - The amount of seconds to run the motors for
+[brake] - Optional. The type of braking that is used. "coast", "hold", "brake". Defaults to "brake".
+[nonBlocking] - Optional. Specifies if the function returns immediately, without waiting for the action to finish. Defaults to false.
+
+Returns:
+true - Successfully ran the motors
+nil, error - Could not run the motors
+
+-----
+
+tank:on_for_degrees(leftPower, rightPower, degrees, [brake], [nonBlocking])
+Description:
+Turns on the motors for degrees
+
+Parameters:
+leftPower - The power to run the left motor at
+rightPower - The power to run the right motor at
+degrees - The amount of degrees to run the motors for
+[brake] - Optional. The type of braking that is used. "coast", "hold", "brake". Defaults to "brake".
+[nonBlocking] - Optional. Specifies if the function returns immediately, without waiting for the action to finish. Defaults to false.
+
+Returns:
+true - Successfully ran the motors
+nil, error - Could not run the motors
+
+-----
+
+tank:on_for_rotations(leftPower, rightPower, rotations, [brake], [nonBlocking])
+Description:
+Turns on the motors for rotations
+
+Parameters:
+leftPower - The power to run the left motor at
+rightPower - The power to run the right motor at
+roations - The rotations to run the motors for
+[brake] - Optional. The type of braking that is used. "coast", "hold", "brake". Defaults to "brake".
+[nonBlocking] - Optional. Specifies if the function returns immediately, without waiting for the action to finish. Defaults to false.
+
+Returns:
+true - Successfully ran the motors
+nil, error - Could not run the motors
+
+-----
+
+tank:turn(power, direction, [brake], [nonBlocking])
+Description:
+Turns the tank on the spot
+
+Parameters:
+power - The power to run the motors at
+direction - The direction to turn the tank. From -90 (face left) to 90 (face right).
+[brake] - Optional. The type of braking that is used. "coast", "hold", "brake". Defaults to "brake".
+[nonBlocking] - Optional. Specifies if the function returns immediately, without waiting for the action to finish. Defaults to false.
+
+Returns:
+true - Successfully ran the motors
+nil, error - Could not run the motors
+
+-----
+
+tank:turnLeft(power, [brake], [nonBlocking])
+Description:
+Turns the tank 90 degrees to the left. Same as tank:turn(power, -90).
+
+Parameters:
+power - The power to run the motors at
+[brake] - Optional. The type of braking that is used. "coast", "hold", "brake". Defaults to "brake".
+[nonBlocking] - Optional. Specifies if the function returns immediately, without waiting for the action to finish. Defaults to false.
+
+Returns:
+true - Successfully ran the motors
+nil, error - Could not run the motors
+
+-----
+
+tank:turnRight(power, [brake], [nonBlocking])
+Description:
+Turns the tank 90 degrees to the right. Same as tank:turn(power, 90)
+
+Parameters:
+power - The power to run the motors at
+[brake] - Optional. The type of braking that is used. "coast", "hold", "brake". Defaults to "brake".
+[nonBlocking] - Optional. Specifies if the function returns immediately, without waiting for the action to finish. Defaults to false.
+
+Returns:
+true - Successfully ran the motors
+nil, error - Could not run the motors
+
+-----
+
+tank:reset()
+Description:
+Resets both motors. See motor:reset()
+
+Parameters:
+None
+
+Returns:
+nil
+
+-----
+
+tank.leftMotor
+Description:
+The motor object for the left motor.
+
+Parameters:
+None
+
+Returns:
+motor - See Motor
+
+-----
+
+tank.rightMotor
+Description:
+The motor object for the right motor.
+
+Parameters:
+None
+
+Returns:
+motor - See Motor
+
+-----
+
+General Sensor
+
+-----
+
+sensor = ev3.newSensor([port])
+Description:
+Creates an object that can manipulate a sensor. A general function that you can use to implement your own sensor types in Lua.
+
+Parameters:
+[port] - Optional. The port to look for your sensor at. IN_1, IN_2, IN_3, IN_4. Defaults to the first sensor port it finds a sensor at.
+
+Returns:
+sensor - An object that you can use to manipulate the sensor
+
+-----
+
+sensor.commands
+Description:
+A table containing the commands this sensor supports
+
+Parameters:
+None
+
+Returns:
+commands - A table that shows all the commands this sensor supports. Can be checked with 'if sensor.commands[<command>] then ... end'.
+
+-----
+
+sensor.modes
+
+Description:
+A table containing all the modes this sensor supports
+
+Parameters:
+None
+
+Returns:
+modes - A table that shows all the modes this sensor supports. Can be checked with 'if sensor.modes[<mode>] then ... end'.
+
+-----
+
+sensor.raw:[command]([value])
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+Colour Sensor
+
+-----
+
+colour = ev3.newColourSensor()
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+colour:mode()
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+colour.currentMode
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+colour:value()
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+colour.sensor
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+Infrared Sensor
+
+-----
+
+ir = ev3.newInfraredSensor()
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+ir.currentMode
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+ir:proximity()
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+ir:beacon()
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+ir:remote()
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+ir.sensor
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+Touch Sensor
+
+-----
+
+touch = ev3.newTouchSensor()
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+touch:value()
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+touch.sensor
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+Ultrasonic Sensor
+
+-----
+
+ultrasonic = ev3.newUltrasonicSensor()
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+ultrasonic:mode()
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+ultrasonic.currentMode
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+ultrasonic:distance()
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+ultrasonic:listen()
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+ultrasonic.sensor
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+Buttons
+
+-----
+
+buttons = ev3.getButtons()
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+Display
+
+-----
+
+ev3.log()
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+Sound
+
+-----
+
+ev3.playTone()
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+ev3.playFile()
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
+
+ev3.speak()
+Description:
+
+
+Parameters:
+
+
+Returns:
+
+
+-----
