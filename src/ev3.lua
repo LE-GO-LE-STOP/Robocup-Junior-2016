@@ -39,7 +39,7 @@ local function setValue(path, value)
 end
 
 local function getValue(path, value)
-	local getValueIO = io.open(device.raw.path.."duty_cycle", "r")
+	local getValueIO = io.open(device.raw.path.."duty_cycle_spycle", "r")
 	local getValueResult = getValueIO:read("*a")
 	getValueIO:close()
 	return getValueResult
@@ -367,7 +367,7 @@ ev3.newMotor = function(port)
 				local result, err = setBrake(self, brake)
 				if not result then return nil, err end
 
-				self.raw:position_sp(degreesToPosition(degrees))
+				self.raw:position_sp(degreesToPosition(self, degrees))
 				self.raw:command("run-to-rel-pos")
 			else
 				return nil, "run-to-rel-pos is not supported on this motor"
@@ -639,7 +639,7 @@ ev3.newInfraredSensor = function(port)
 	end
 
 	device.remote = function(self, channel)
-		local result, err = self:mode("IR-SEEK")
+		local result, err = self:mode("IR-REMOTE")
 		if not result then return nil, err end
 
 		return self.sensor.raw:value(channel-1)
