@@ -18,10 +18,6 @@ function Device:init(name, port)
 	local rawModes = io.open("/sys/class/")
 end
 
-function Device:isConnected()
-	return self.raw:connected()
-end
-
 function Device:name()
 	return self._name
 end
@@ -32,6 +28,18 @@ end
 
 function Device:modes()
 	return self._modes
+end
+
+function Device:isConnected()
+	return self.raw:connected()
+end
+
+function Device:isMode(mName)
+	if self._modes[mName] then
+		return true
+	else
+		return false
+	end
 end
 
 return Device
