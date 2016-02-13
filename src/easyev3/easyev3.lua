@@ -21,12 +21,12 @@ local function notSupported(device, command, deviceType)
 	error(command.. " is not supported on this "..deviceType or "device".." ("..self.type.." on port "..self.port..")")
 end
 
-ev3 = {}
+local ev3 = {}
 
 --Motor
-ev3.newMotor = class()
+ev3.Motor = class()
 
-function ev3.newMotor:init(port, motorType)
+function ev3.Motor:init(port, motorType)
 	self.raw = Motor(port, {motorType})
 
 	self.port = self.raw._port
@@ -39,7 +39,7 @@ function ev3.newMotor:init(port, motorType)
 	self.stop_commands = {}
 end
 
-function ev3.newMotor:command(command)
+function ev3.Motor:command(command)
 	if not isConnected(self) then
 		error("The motor at port "..device.port.." is not connected")
 	end
@@ -381,3 +381,5 @@ end
 --Sound
 --See ev3dev.lua
 ev3.sound = Sound
+
+return ev3;
