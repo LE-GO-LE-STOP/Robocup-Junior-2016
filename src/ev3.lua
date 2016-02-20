@@ -65,8 +65,8 @@ local Device = class()
 
 function Device:init(port, dType)
 	local basePath = "/sys/class/"..dType.."/"
-	local e = {exists(basePath)}
-	if !e[1] then error("Type does not exist") end
+	local e = 
+	if not {exists(basePath)}[1] then error("Type does not exist") end
 
 	rawset(self.attributes, "_parent", self)
 
@@ -145,7 +145,7 @@ end
 --[[
 
 Motor:
-The base motor class. Used for official LEGO motors.
+Used to control official LEGO motors.
 
 Parameters:
 port - The port to look for. Constants provided for convenience.
@@ -259,6 +259,27 @@ function Motor:reset()
 		self.attributes["command"] = "reset"
 	else
 		error("reset is not supported on this motor")
+	end
+end
+
+--[[
+
+DC Motor:
+Used to control a generic DC Motor.
+
+Parameters;
+port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local DC_Motor = class(Device)
+
+function DC_Motor:init(port)
+	Device.init(self, port, "dc-motor")
+
+	self.stop_commands = {}
+	for _, v in pairs(stringSplit(self.attributes["stop_commands"])) do
+		self.stop_commands[v] = true
 	end
 end
 
