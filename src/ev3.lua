@@ -57,8 +57,8 @@ Device:
 The base class for all motors and sensors. Handles low level file system writes.
 
 Parameters:
-port - The port to look for. Constants provided for convenience.
-dType - The type of device to search for. See /sys/class for types.
+String port - The port to look for. Constants provided for convenience.
+String dType - The type of device to search for. See /sys/class for types.
 
 --]]
 
@@ -148,7 +148,7 @@ Motor:
 Used to control official LEGO motors.
 
 Parameters:
-port - The port to look for. Constants provided for convenience.
+String port - The port to look for. Constants provided for convenience.
 
 --]]
 
@@ -268,7 +268,7 @@ DC Motor:
 Used to control a generic DC Motor.
 
 Parameters;
-port - The port to look for. Constants provided for convenience.
+String port - The port to look for. Constants provided for convenience.
 
 --]]
 
@@ -289,7 +289,7 @@ Server Motor:
 Used to control a generic servo motor.
 
 Parameters;
-port - The port to look for. Constants provided for convenience.
+String port - The port to look for. Constants provided for convenience.
 
 --]]
 
@@ -320,6 +320,65 @@ function Servo_Motor:init(port)
 			break
 		end
 	end
+end
+
+--[[
+
+Tank:
+Provides easy tank-like controls for LEGO motors.
+
+Parameters;
+Motor leftMotor - The left motor in a tank
+Motor rightMotor - The right motor in a tank
+
+--]]
+
+local Tank = class()
+
+function Tank:init(leftMotor, rightMotor)
+	if not leftMotor:is_a(Motor) or not rightMotor:is_a(Motor) then error("Invalid motor provided") end
+
+	self.leftMotor = leftMotor
+	self.rightMotor = rightMotor
+end
+
+function Tank:off(brake)
+	self.leftMotor:off(brake)
+	self.rightMotor:off(brake)
+end
+
+function Tank:on(leftPower, rightPower)
+	self.leftMotor:on(leftPower)
+	self.rightMotor:off(rightPower)
+end
+
+function Tank:on_for_seconds(leftPower, rightPower, seconds, brake, nonBlocking)
+	self.leftMotor:on_for_seconds(leftPower, seconds, brake, true)
+	self.rightMotor:on_for_seconds(rightPower, seconds, brake, nonBlocking)
+end
+
+function Tank:on_for_degrees(leftPower, rightPower, degrees, brake, nonBlocking)
+	self.leftMotor:on_for_degrees(leftPower, degrees, brake, true)
+	self.rightMotor:on_for_degrees(rightPower, degrees, brake, nonBlocking)
+end
+
+function Tank:on_for_rotations(leftPower, rightPower. rotations, brake, nonBlocking)
+	local degrees = rotations*360
+	self.leftMotor:on_for_degrees(leftPower, degrees, brake, true)
+	self.rightMotor:on_for_degrees(rightPower, degrees, brake, nonBlocking)
+end
+
+function Tank:turn(power, direction, brake, nonBlocking)
+	--direction from -90 to face left to 90 to face right
+	self:on_for_degrees(power, -power, direction/2, brake, nonBlocking)
+end
+
+function Tank:turnLeft(power, brake, nonBlocking)
+	self:turn(power, -90, brake, nonBlocking)
+end
+
+function Tank:turnRight(power, brake, nonBlocking)
+	self:turn(power, 90, brake, nonBlocking)
 end
 
 return {
@@ -366,9 +425,10 @@ return {
 	--Motors
 	Motor = Motor,
 	DC_Motor = DC_Motor,
-	Servo_Motor = Servo_Motor
+	Servo_Motor = Servo_Motor,
 
-	--Motor Controller
+	--Tank
+	Tank = Tank
 
 	--Generic Sensor
 
