@@ -31,6 +31,21 @@ local function listDir(dir)
 	return output
 end
 
+local function exists(path)
+	local currentPath = lfs.currentdir()
+
+	local isDir, err = lfs.chdir(path)
+
+	local fileExists = true
+	if err then
+		fileExists = string.find(err, "Invalid argument")
+	end
+
+	lfs.chdir(currentPath)
+
+	return fileExists, isDir
+end
+
 --[[
 
 Device:
@@ -44,21 +59,77 @@ dType - The type of device to search for. See /sys/class for types.
 local Device = class()
 
 function Device:init(port, dType)
-	local basePath = "/sys/class/"..dType
+	local basePath = "/sys/class/"..dType.."/"
+	local e = {exists(basePath)}
+	if !e[1] then error("Type does not exist") end
 
+	rawset(self.attributes, "_parent", self)
+
+	local devices = listDir(basePath)
+	self._path = nil
+	for _, v in pairs(devices) do
+		local devicePath = basePath..v.."/"
+
+		local deviceIO = io.open(devicePath.."port_name", "r")
+		local devicePort = deviceIO:read("*l")
+		deviceIO:close()
+		if not port or devicePort == port then
+			--Found device on port requested
+			--Set device info
+			self._path = devicePath
+			self._port = devicePort
+			self._type = self.attributes["driver_name"]
+			break
+		end
+	end
+end
+
+function Device:connected()
+	return self._path ~= nil
 end
 
 --Attribute read/write
-function Device:getAttribute(name)
-	--Read attribute data as string
+Device.attributes = {}
+do
+	local mt = {}
+
+	mt.__index = function(attrTable, name)
+		local self = attrTable._parent
+
+		if not self:connected() then error("Device not connected") end
+
+		local attributePath = self._path..name
+		if not {exists(attributePath)}[1] then error("Attribute does not exist") end
+
+		local readIO = io.open(attributePath, "r")
+		local data = readIO:read("*a")
+		readIO:close()
+
+		return data
+	end
+
+	mt.__newindex = function(attrTable, name, value)
+		local self = attrTable._parent
+
+		if not self:connected() then error("Device not connected") end
+
+		local attributePath = self._path..name
+		if not {exists(attributePath)}[1] then error("Attribute does not exist") end
+
+		local writeIO = io.open(attributePath, "w")
+		writeIO:write(value)
+		writeIO:close()
+	end
+
+	setmetatable(Device.attributes, mt)
 end
 
-function Device:getAttributeList(name)
-
+function Device:type()
+	return self._type
 end
 
-function Device:setAttribute(name, data)
-
+function Device:port()
+	return self._port
 end
 
 return {
