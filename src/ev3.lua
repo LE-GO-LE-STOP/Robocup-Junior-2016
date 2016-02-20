@@ -381,6 +381,27 @@ function Tank:turnRight(power, brake, nonBlocking)
 	self:turn(power, 90, brake, nonBlocking)
 end
 
+--[[
+
+Sensor:
+The base class for all sensors
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Sensor = class(Device)
+
+function Sensor:init(port)
+	Device.init(self, port, "sensor")
+
+	self.modes = {}
+	for _, v in pairs(stringSplit(self.attributes["modes"])) do
+		self.modes[v] = true
+	end
+end
+
 return {
 	--Utills
 	sleep = sleep,
