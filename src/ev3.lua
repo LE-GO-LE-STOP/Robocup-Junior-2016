@@ -467,8 +467,6 @@ local Colour_Sensor = class(Sensor)
 	
 function Colour_Sensor:init(port)
 	Sensor.init(self, port)
-
-	self:setMode("COL-COLOR")
 end
 
 function Colour_Sensor:reflected()
@@ -498,6 +496,38 @@ function Colour_Sensor:rgb()
 	local b = math.floor(tonumber(self.attributes["value2"]) / rgb_constant)
 
 	return {r, g, b}
+end
+
+--[[
+
+Ultrasonic Sensor:
+Used to control a NXT/EV3 ultrasonic sensor.
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Ultrasonic_Sensor = class(Sensor)
+
+function Ultrasonic_Sensor:init(port)
+	Sensor.init(self, port)
+end
+
+function Ultrasonic_Sensor:distance(mode)
+	self:setMode(mode)
+
+	return tonumber(self.attributes["value0"])
+end
+
+function Ultrasonic_Sensor:nearby()
+	self:setMode("US-LISTEN")
+
+	if self.attributes["value0"] == "true" then
+		return true
+	else
+		return false
+	end
 end
 
 return {
@@ -558,7 +588,8 @@ return {
 	--Sensors
 	I2C_Sensor = I2C_Sensor,
 	Touch_Sensor = Touch_Sensor,
-	Colour_Sensor = Colour_Sensor
+	Colour_Sensor = Colour_Sensor,
+	Ultrasonic_Sensor = Ultrasonic_Sensor
 
 	--Sound and Display
 
