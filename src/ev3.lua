@@ -471,19 +471,16 @@ end
 
 function Colour_Sensor:reflected()
 	self:setMode("COL-REFLECT")
-
 	return tonumber(self.attributes["value0"])
 end
 
 function Colour_Sensor:ambient()
 	self:setMode("COL-AMBIENT")
-
 	return tonumber(self.attributes["value0"])
 end
 
 function Colour_Sensor:colour()
 	self:setMode("COL-COLOR")
-
 	return tonumber(self.attributes["value0"])
 end
 
@@ -516,8 +513,7 @@ end
 
 function Ultrasonic_Sensor:distance(mode)
 	self:setMode(mode)
-
-	return tonumber(self.attributes["value0"])
+	return tonumber(self.attributes["value0"]) / 10
 end
 
 function Ultrasonic_Sensor:nearby()
@@ -548,13 +544,11 @@ end
 
 function Gyro_Sensor:angle()
 	self:setMode("GYRO-ANG")
-
 	return tonumber(self.attributes["value0"])
 end
 
 function Gyro_Sensor:rate()
 	self:setMode("GYRO-RATE")
-
 	return tonumber(self.attributes["value0"])
 end
 
@@ -576,7 +570,6 @@ end
 
 function Infrared_Sensor:proximity()
 	self:setMode("IR-PROX")
-
 	return tonumber(self.attributes["value0"])
 end
 
@@ -623,7 +616,7 @@ end
 --[[
 
 Sound Sensor:
-Used to control an NXT sound sensor.
+Used to control a NXT sound sensor.
 
 Parameters:
 String port - The port to look for. Constants provided for convenience.
@@ -633,17 +626,43 @@ String port - The port to look for. Constants provided for convenience.
 local Sound_Sensor = class(Sensor)
 
 function Sound_Sensor:init(port)
-	Sensor:init(self, port)
+	Sensor.init(self, port)
 end
 
 function Sound_Sensor:pressure()
 	self:setMode("DB")
-	return tonumber(self.attributes["value0"])
+	return tonumber(self.attributes["value0"]) / 10
 end
 
 function Sound_Sensor:pressure_low()
 	self:setMode("DBA")
-	return tonumber(self.attributes["value0"])
+	return tonumber(self.attributes["value0"]) / 10
+end
+
+--[[
+
+Light Sensor:
+Used to control a NXT light sensor.
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Light_Sensor = class(Sensor)
+
+function Light_Sensor:init(port)
+	Sensor.init(self, port)
+end
+
+function Light_Sensor:reflected()
+	self:setMode("REFLECT")
+	return tonumber(self.attributes["value0"]) / 10
+end
+
+function Light_Sensor:ambient()
+	self:setMode("AMBIENT")
+	return tonumber(self.attributes["value0"]) / 10
 end
 
 return {
