@@ -558,6 +558,68 @@ function Gyro_Sensor:rate()
 	return tonumber(self.attributes["value0"])
 end
 
+--[[
+
+Infrared Sensor:
+Used to control an EV3 gyro sensor.
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Infrared_Sensor = class(Sensor)
+
+function Infrared_Sensor:init(port)
+	Sensor.init(self, port)
+end
+
+function Infrared_Sensor:proximity()
+	self:setMode("IR-PROX")
+
+	return tonumber(self.attributes["value0"])
+end
+
+function Infrared_Sensor:seek(channel)
+	if type(channel) ~= "number" or channel < 1 or channel > 4 then error("Invalid channel") end
+
+	self:setMode("IR-SEEK")
+
+	local valueOffset = (channel-1)*2
+	local heading = tonumber(self.attributes["value"..tostring(valueOffset)])
+	local distance = tonumber(self.attributes["value"..tostring(valueOffset + 1)])
+	local detected = true
+
+	if heading == 0 and distance == -128 then
+		detected = false
+	end
+
+	return {detected, heading, distance}
+end
+
+local remote_buttons = {
+	["262"] = {red={up=false,down=false},blue={up=false,down=false}},
+	["384"] = {red={up=false,down=false},blue={up=false,down=false}},
+	["287"] = {red={up=true,down=false},blue={up=false,down=false}},
+	["300"] = {red={up=false,down=true},blue={up=false,down=false}},
+	["309"] = {red={up=true,down=true},blue={up=false,down=false}},
+	["330"] = {red={up=false,down=false},blue={up=true,down=false}},
+	["339"] = {red={up=true,down=false},blue={up=true,down=false}},
+	["352"] = {red={up=false,down=true},blue={up=true,down=false}},
+	["377"] = {red={up=true,down=true},blue={up=true,down=false}},
+	["390"] = {red={up=false,down=false},blue={up=false,down=true}},
+	["415"] = {red={up=true,down=false},blue={up=false,down=true}},
+	["428"] = {red={up=false,down=true},blue={up=false,down=true}},
+	["437"] = {red={up=true,down=true},blue={up=false,down=true}},
+	["458"] = {red={up=false,down=false},blue={up=true,down=true}},
+	["467"] = {red={up=true,down=false},blue={up=true,down=true}},
+	["480"] = {red={up=false,down=true},blue={up=true,down=true}},
+	["505"] = {red={up=true,down=true},blue={up=true,down=true}},
+}
+function Infrared_Sensor:remote()
+	return remote_buttons[self.attributes["value0"]]
+end
+
 return {
 	--Utills
 	sleep = sleep,
@@ -626,7 +688,9 @@ return {
 	I2C_Sensor = I2C_Sensor,
 	Touch_Sensor = Touch_Sensor,
 	Colour_Sensor = Colour_Sensor,
-	Ultrasonic_Sensor = Ultrasonic_Sensor
+	Ultrasonic_Sensor = Ultrasonic_Sensor,
+	Gyro_Sensor = Gyro_Sensor,
+	Infrared_Sensor = Infrared_Sensor
 
 	--Sound and Display
 
