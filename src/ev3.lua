@@ -61,11 +61,11 @@ port - The port to look for. Constants provided for convenience.
 dType - The type of device to search for. See /sys/class for types.
 
 --]]
+
 local Device = class()
 
 function Device:init(port, dType)
 	local basePath = "/sys/class/"..dType.."/"
-	local e = 
 	if not {exists(basePath)}[1] then error("Type does not exist") end
 
 	rawset(self.attributes, "_parent", self)
@@ -283,6 +283,45 @@ function DC_Motor:init(port)
 	end
 end
 
+--[[
+
+Server Motor:
+Used to control a generic servo motor.
+
+Parameters;
+port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Servo_Motor = class(Device)
+
+function Servo_Motor:init(port)
+	--Command discovery code is ommited, because servo motors do not have the commands attribute
+	local basePath = "/sys/class/servo-motor"
+
+	rawset(self.attributes, "_parent", self)
+
+	local devices = listDir(basePath)
+	for _, v in pairs(devices) do
+		local devicePath = basePath..v.."/"
+
+		local deviceIO = io.open(devicePath.."address", "r")
+		local devicePort = deviceIO:read("*l")
+		deviceIO:close()
+		if not port or devicePort == port then
+			--Found device on port requested
+			--Set device info
+			self._path = devicePath
+			self._port = devicePort
+			self._type = self.attributes["driver_name"]
+
+			self.commands = {run = true, float = true}
+
+			break
+		end
+	end
+end
+
 return {
 	--Utills
 	sleep = sleep,
@@ -326,6 +365,10 @@ return {
 
 	--Motors
 	Motor = Motor,
+	DC_Motor = DC_Motor,
+	Servo_Motor = Servo_Motor
+
+	--Motor Controller
 
 	--Generic Sensor
 
