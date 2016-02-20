@@ -10,16 +10,16 @@ end
 
 local Device = class()
 
-function Device:init(name, port)
-	self._name = name
-	self._port = port
+function Device:init()
+	self._type = self.raw._type
+	self._port = self.raw._port
 
 	self._modes = {}
 	local rawModes = io.open("/sys/class/")
 end
 
-function Device:name()
-	return self._name
+function Device:type()
+	return self._type
 end
 
 function Device:port()
@@ -40,6 +40,10 @@ function Device:isMode(mName)
 	else
 		return false
 	end
+end
+
+function Device:command(command)
+	if !self:is
 end
 
 return Device
