@@ -530,6 +530,34 @@ function Ultrasonic_Sensor:nearby()
 	end
 end
 
+--[[
+
+Gyro Sensor:
+Used to control an EV3 gyro sensor.
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Gyro_Sensor = class(Sensor)
+
+function Gyro_Sensor:init(port)
+	Sensor.init(self, port)
+end
+
+function Gyro_Sensor:angle()
+	self:setMode("GYRO-ANG")
+
+	return tonumber(self.attributes["value0"])
+end
+
+function Gyro_Sensor:rate()
+	self:setMode("GYRO-RATE")
+
+	return tonumber(self.attributes["value0"])
+end
+
 return {
 	--Utills
 	sleep = sleep,
