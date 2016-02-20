@@ -670,17 +670,17 @@ return {
 	sleep = sleep,
 
 	--Constants
-	OUT_ANY = nil,
-	OUT_A = "outA",
-	OUT_B = "outB",
-	OUT_C = "outC",
-	OUT_D = "outD",
+	OUTPUT_AUTO = nil,
+	OUTPUT_A = "outA",
+	OUTPUT_B = "outB",
+	OUTPUT_C = "outC",
+	OUTPUT_D = "outD",
 
-	IN_ANY = nil,
-	IN_1 = "in1",
-	IN_2 = "in2",
-	IN_3 = "in3",
-	IN_4 = "in4",
+	INPUT_AUTO = nil,
+	INPUT_1 = "in1",
+	INPUT_2 = "in2",
+	INPUT_3 = "in3",
+	INPUT_4 = "in4",
 
 	NOCOLOUR = 0,
 	BLACK = 1,
@@ -736,7 +736,8 @@ return {
 	Ultrasonic_Sensor = Ultrasonic_Sensor,
 	Gyro_Sensor = Gyro_Sensor,
 	Infrared_Sensor = Infrared_Sensor,
-	Sound_Sensor = Sound_Sensor
+	Sound_Sensor = Sound_Sensor,
+	Light_Sensor = Light_Sensor
 
 	--Sound and Display
 
