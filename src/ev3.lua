@@ -402,6 +402,15 @@ function Sensor:init(port)
 	end
 end
 
+function Sensor:setMode(mode)
+	if not self.modes[mode] then error(mode.." is not supported") end
+
+	if self._mode ~= mode then
+		self.attributes["mode"] = mode
+		self._mode = mode
+	end
+end
+
 --[[
 
 I2C Sensor:
@@ -433,15 +442,62 @@ local Touch_Sensor = class(Sensor)
 function Touch_Sensor:init(port)
 	Sensor.init(self, port)
 
-	self.attributes["mode"] = "TOUCH"
+	self:setMode("TOUCH")
 end
 
 function Touch_Sensor:pressed()
-	if self.attributes["is_pressed"] == "true" then
+	if self.attributes["value0"] == "true" then
 		return true
 	else
 		return false
 	end
+end
+
+--[[
+
+Colour Sensor:
+Used to control an EV3 colour sensor.
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Colour_Sensor = class(Sensor)
+	
+function Colour_Sensor:init(port)
+	Sensor.init(self, port)
+
+	self:setMode("COL-COLOR")
+end
+
+function Colour_Sensor:reflected()
+	self:setMode("COL-REFLECT")
+
+	return tonumber(self.attributes["value0"])
+end
+
+function Colour_Sensor:ambient()
+	self:setMode("COL-AMBIENT")
+
+	return tonumber(self.attributes["value0"])
+end
+
+function Colour_Sensor:colour()
+	self:setMode("COL-COLOR")
+
+	return tonumber(self.attributes["value0"])
+end
+
+local rgb_constant = 1020/256 --Used to convert the raw rgb value (0 - 1020) to the usual rgb range (0 - 255)
+function Colour_Sensor:rgb()
+	self:setMode("RGB-RAW")
+
+	local r = math.floor(tonumber(self.attributes["value0"]) / rgb_constant)
+	local g = math.floor(tonumber(self.attributes["value1"]) / rgb_constant)
+	local b = math.floor(tonumber(self.attributes["value2"]) / rgb_constant)
+
+	return {r, g, b}
 end
 
 return {
@@ -473,6 +529,7 @@ return {
 	COLOUR = "COL-COLOR",
 	REFLECT = "COL-REFLECT",
 	AMBIENT = "COL-AMBIENT",
+	RGB = "RGB-RAW",
 
 	PROXIMITY = "IR-PROX",
 	BEACON = "IR-SEEK",
@@ -500,7 +557,8 @@ return {
 
 	--Sensors
 	I2C_Sensor = I2C_Sensor,
-	Touch_Sensor = Touch_Sensor
+	Touch_Sensor = Touch_Sensor,
+	Colour_Sensor = Colour_Sensor
 
 	--Sound and Display
 
