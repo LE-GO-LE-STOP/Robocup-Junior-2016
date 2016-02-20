@@ -297,7 +297,7 @@ local Servo_Motor = class(Device)
 
 function Servo_Motor:init(port)
 	--Command discovery code is ommited, because servo motors do not have the commands attribute
-	local basePath = "/sys/class/servo-motor"
+	local basePath = "/sys/class/servo-motor/"
 
 	rawset(self.attributes, "_parent", self)
 
@@ -665,6 +665,40 @@ function Light_Sensor:ambient()
 	return tonumber(self.attributes["value0"]) / 10
 end
 
+--[[
+
+Power Suppy:
+Get information on the power state.
+
+Parameters:
+
+
+--]]
+
+local PowerSupply = class(Device)
+
+function PowerSupply:init()
+	--Command discovery code is ommited, because power supplies do not have the commands attribute
+	local basePath = "/sys/class/power_supply/"
+
+	rawset(self.attributes, "_parent", self)
+
+	local devicePath = basePath..listDir(basePath)[0].."/"
+
+	--Set device info
+	self._path = devicePath
+	self.port = nil
+	self._type = self.attributes["driver_name"]
+end
+
+function PowerSupply:current()
+	return tonumber(self.attributes["measured_current"]) / 1000000
+end
+
+function PowerSupply:voltage()
+	return tonumber(self.attributes["measured_voltage"]) / 1000000
+end
+
 return {
 	--Utills
 	sleep = sleep,
@@ -737,11 +771,14 @@ return {
 	Gyro_Sensor = Gyro_Sensor,
 	Infrared_Sensor = Infrared_Sensor,
 	Sound_Sensor = Sound_Sensor,
-	Light_Sensor = Light_Sensor
+	Light_Sensor = Light_Sensor,
 
-	--Sound and Display
+	--Sound
 
 	--Power
+	PowerSupply = PowerSupply
 
 	--LED
+
+	--Buttons
 }
