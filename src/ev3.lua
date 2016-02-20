@@ -2,12 +2,17 @@ require "lfs"
 local class = require("class.lua")
 
 --Util functions
-local function stringSplit(inputString)
-	local output = {}
-	for i in string.gmatch(inputString, "%S+") do
-  		table.insert(output, i)
-	end
-	return output
+local function stringSplit(inputstr, sep)
+	--http://stackoverflow.com/a/7615129/3404868
+    if sep == nil then
+            sep = "%s"
+    end
+    local t={} ; i=1
+    for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
+            t[i] = str
+            i = i + 1
+    end
+    return t
 end
 
 local function sleep(time)
@@ -66,11 +71,10 @@ function Device:init(port, dType)
 	rawset(self.attributes, "_parent", self)
 
 	local devices = listDir(basePath)
-	self._path = nil
 	for _, v in pairs(devices) do
 		local devicePath = basePath..v.."/"
 
-		local deviceIO = io.open(devicePath.."port_name", "r")
+		local deviceIO = io.open(devicePath.."address", "r")
 		local devicePort = deviceIO:read("*l")
 		deviceIO:close()
 		if not port or devicePort == port then
@@ -79,6 +83,12 @@ function Device:init(port, dType)
 			self._path = devicePath
 			self._port = devicePort
 			self._type = self.attributes["driver_name"]
+
+			self.commands = {}
+			for _, v in pairs(stringSplit(self.attributes["commands"])) do
+				self.commands[v] = true
+			end
+
 			break
 		end
 	end
@@ -132,6 +142,126 @@ function Device:port()
 	return self._port
 end
 
+--[[
+
+Motor:
+The base motor class. Used for official LEGO motors.
+
+Parameters:
+port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Motor = class(Device)
+
+function Motor:init(port)
+	Device.init(self, port, "tacho-motor")
+
+	self.stop_commands = {}
+	for _, v in pairs(stringSplit(self.attributes["stop_commands"])) do
+		self.stop_commands[v] = true
+	end
+end
+
+function 
+
+function Motor:positionToDegrees(position)
+	return (360/self.attributes["count_per_rot"])*position
+end
+
+function Motor:degreesToPosition(degrees)
+	return (self.attributes["count_per_rot"]/360)*degrees
+end
+
+function Motor:setBrake(brake)
+	if brake then
+		if not self.stop_commands[brake] then error(brake.." is not supported on this motor") end
+
+		self.attributes["stop_command"] = brake
+	end
+end
+
+function Motor:off(brake)
+	self:setBrake(brake)
+	self.attributes["command"] = "stop"
+end
+
+function Motor:on(power)
+	if type(power) ~= "number" then error("power is not a number!") end
+
+	if self.commands["run-forever"] then
+		self.attributes["duty_cycle_sp"] = power
+		self.attributes["command"] = "run-forever"
+	else
+		error("run-forever is not supported on this motor")
+	end
+end
+
+function Motor:on_for_seconds(power, seconds, brake, nonBlocking)
+	if type(seconds) ~= "number" then error("seconds is not a number!") end
+
+	if type(power) ~= "number" then error("power is not a number!") end
+	self.attributes["duty_cycle_sp"] = power
+
+	if nonBlocking then
+		if self.commands["run-timed"] then
+			self:setBrake(brake)
+
+			self.attributes["time_sp"] = seconds*1000
+			self.attributes["command"] = "run-timed"
+		else
+			error("run-timed is not supported on this motor")
+		end
+	else
+		self:on(power)
+		sleep(seconds)
+		self:off(brake)
+	end
+end
+
+function Motor:on_for_degrees(power, degrees, brake, nonBlocking)
+	if type(degrees) ~= "number" then error("degrees is not a number!") end
+	local position = self:degreesToPosition(degrees)
+
+	if type(power) ~= "number" then error("power is not a number!") end
+	self.attributes["duty_cycle_sp"] = power
+
+	if nonBlocking then
+		if self.commands["run-to-rel-pos"] then
+			self:setBrake(brake)
+
+			self.attributes["position_sp"] = position
+			self.attributes["command"] = "run-to-rel-pos"
+		else
+			error("run-to-rel-pos is not supported on this motor")
+		end
+	else
+		local targetPosition = tonumber(self.attributes["position"]) + position
+
+		self:on(power)
+
+		if degrees >= 0 then
+			while tonumber(self.attributes["position"]) < targetPosition do end
+		else
+			while tonumber(self.attributes["position"]) > targetPosition do end
+		end
+
+		self:off(brake)
+	end
+end
+
+function Motor:on_for_rotations(power, rotations, brake, nonBlocking)
+	self:on_for_degrees(power, rotations*360, brake, nonBlocking)
+end
+
+function Motor:reset()
+	if self.commands["reset"] then
+		self.attributes["command"] = "reset"
+	else
+		error("reset is not supported on this motor")
+	end
+end
+
 return {
 	--Utills
 	sleep = sleep,
@@ -164,16 +294,25 @@ return {
 	BEACON = "IR-SEEK",
 	REMOTE = "IR-REMOTE",
 
-	CONTINUOS_CM = "US-DIST-CM",
-	CONTINUOS_INCH = "US-DIST-IN",
+	CONTINUOUS_CM = "US-DIST-CM",
+	CONTINUOUS_INCH = "US-DIST-IN",
 	SINGLE_CM = "US-SI-CM",
 	SINGLE_INCH = "US-SI-IN",
 	LISTEN = "US-LISTEN",
 
-	--Simple Devices
-	Device = Device
+	--Generic Device
+	Device = Device,
 
-	--Abstracted Devices
+	--Motors
+	Motor = Motor,
+
+	--Generic Sensor
+
+	--Sensors
 
 	--Sound and Display
+
+	--Power
+
+	--LED
 }
