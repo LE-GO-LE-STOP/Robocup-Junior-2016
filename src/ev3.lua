@@ -384,7 +384,7 @@ end
 --[[
 
 Sensor:
-The base class for all sensors
+The base class for all sensors.
 
 Parameters:
 String port - The port to look for. Constants provided for convenience.
@@ -400,6 +400,22 @@ function Sensor:init(port)
 	for _, v in pairs(stringSplit(self.attributes["modes"])) do
 		self.modes[v] = true
 	end
+end
+
+--[[
+
+I2C Sensor:
+Used to control a generic I2C sensor
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local I2C_Sensor = class(Sensor)
+
+function I2C_Sensor:init(port)
+	Sensor.init(self, port)
 end
 
 return {
@@ -449,11 +465,13 @@ return {
 	Servo_Motor = Servo_Motor,
 
 	--Tank
-	Tank = Tank
+	Tank = Tank,
 
 	--Generic Sensor
+	Sensor = Sensor,
 
 	--Sensors
+	I2C_Sensor = I2C_Sensor
 
 	--Sound and Display
 
