@@ -418,16 +418,44 @@ function I2C_Sensor:init(port)
 	Sensor.init(self, port)
 end
 
+--[[
+
+Touch Sensor:
+Used to control a NXT/EV3 touch sensor.
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Touch_Sensor = class(Sensor)
+
+function Touch_Sensor:init(port)
+	Sensor.init(self, port)
+
+	self.attributes["mode"] = "TOUCH"
+end
+
+function Touch_Sensor:pressed()
+	if self.attributes["is_pressed"] == "true" then
+		return true
+	else
+		return false
+	end
+end
+
 return {
 	--Utills
 	sleep = sleep,
 
 	--Constants
+	OUT_ANY = nil,
 	OUT_A = "outA",
 	OUT_B = "outB",
 	OUT_C = "outC",
 	OUT_D = "outD",
 
+	IN_ANY = nil,
 	IN_1 = "in1",
 	IN_2 = "in2",
 	IN_3 = "in3",
@@ -471,7 +499,8 @@ return {
 	Sensor = Sensor,
 
 	--Sensors
-	I2C_Sensor = I2C_Sensor
+	I2C_Sensor = I2C_Sensor,
+	Touch_Sensor = Touch_Sensor
 
 	--Sound and Display
 
