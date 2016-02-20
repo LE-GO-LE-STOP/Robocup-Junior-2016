@@ -620,6 +620,32 @@ function Infrared_Sensor:remote()
 	return remote_buttons[self.attributes["value0"]]
 end
 
+--[[
+
+Sound Sensor:
+Used to control an NXT sound sensor.
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Sound_Sensor = class(Sensor)
+
+function Sound_Sensor:init(port)
+	Sensor:init(self, port)
+end
+
+function Sound_Sensor:pressure()
+	self:setMode("DB")
+	return tonumber(self.attributes["value0"])
+end
+
+function Sound_Sensor:pressure_low()
+	self:setMode("DBA")
+	return tonumber(self.attributes["value0"])
+end
+
 return {
 	--Utills
 	sleep = sleep,
@@ -690,7 +716,8 @@ return {
 	Colour_Sensor = Colour_Sensor,
 	Ultrasonic_Sensor = Ultrasonic_Sensor,
 	Gyro_Sensor = Gyro_Sensor,
-	Infrared_Sensor = Infrared_Sensor
+	Infrared_Sensor = Infrared_Sensor,
+	Sound_Sensor = Sound_Sensor
 
 	--Sound and Display
 
