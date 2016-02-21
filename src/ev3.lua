@@ -66,7 +66,8 @@ local Device = class()
 
 function Device:init(port, dType)
 	local basePath = "/sys/class/"..dType.."/"
-	if not {exists(basePath)}[1] then error("Type does not exist") end
+	local e = {exists(basePath)}
+	if not e[1] then error("Type does not exist") end
 
 	rawset(self.attributes, "_parent", self)
 
@@ -109,7 +110,8 @@ do
 		if not self:connected() then error("Device not connected") end
 
 		local attributePath = self._path..name
-		if not {exists(attributePath)}[1] then error("Attribute does not exist") end
+		local e = {exists(attributePath)}
+		if not e[1] then error("Attribute does not exist") end
 
 		local readIO = io.open(attributePath, "r")
 		local data = readIO:read("*a")
@@ -124,7 +126,8 @@ do
 		if not self:connected() then error("Device not connected") end
 
 		local attributePath = self._path..name
-		if not {exists(attributePath)}[1] then error("Attribute does not exist") end
+		local e = {exists(attributePath)}
+		if not e[1] then error("Attribute does not exist") end
 
 		local writeIO = io.open(attributePath, "w")
 		writeIO:write(value)
@@ -162,8 +165,6 @@ function Motor:init(port)
 		self.stop_commands[v] = true
 	end
 end
-
-function 
 
 function Motor:positionToDegrees(position)
 	return (360/self.attributes["count_per_rot"])*position
@@ -362,7 +363,7 @@ function Tank:on_for_degrees(leftPower, rightPower, degrees, brake, nonBlocking)
 	self.rightMotor:on_for_degrees(rightPower, degrees, brake, nonBlocking)
 end
 
-function Tank:on_for_rotations(leftPower, rightPower. rotations, brake, nonBlocking)
+function Tank:on_for_rotations(leftPower, rightPower, rotations, brake, nonBlocking)
 	local degrees = rotations*360
 	self.leftMotor:on_for_degrees(leftPower, degrees, brake, true)
 	self.rightMotor:on_for_degrees(rightPower, degrees, brake, nonBlocking)
@@ -737,7 +738,7 @@ return {
 	LISTEN = "US-LISTEN",
 
 	ANGLE = "GYRO-ANG",
-	RATE = "GYRO-RATE"
+	RATE = "GYRO-RATE",
 
 	PROXIMITY = "IR-PROX",
 	BEACON = "IR-SEEK",
