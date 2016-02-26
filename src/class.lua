@@ -15,7 +15,7 @@ local function class(base)
     -- and they will look up their methods in it.
     c.__index = c
 
-    -- expose a constructor which can be called by <classname>( <args> )
+    -- expose a constructor which can be called by <classname>(<args>)
     local mt = {}
     mt.__call = function(class_tbl, ...)
         local obj = {}
@@ -28,7 +28,7 @@ local function class(base)
                 base.init(obj, ...)
             end
         end
-
+        
         return obj
     end
 
@@ -45,5 +45,4 @@ local function class(base)
     return c
 end
 
-
-return class
+return {["class"]=class}
