@@ -1,5 +1,5 @@
-require "lfs"
-local class = require("class.lua")
+local lfs = require "lfs"
+local class = require("class").class
 
 --Util functions
 local function stringSplit(inputstr, sep)
@@ -28,7 +28,7 @@ local function listDir(dir)
 		local directory = iterator(id)
 		if directory == nil then
 			break
-		else
+		elseif directory ~= "." and directory ~= ".." then
 			table.insert(output, directory)
 		end
 	end
@@ -43,12 +43,11 @@ local function exists(path)
 
 	local fileExists = true
 	if err then
-		fileExists = string.find(err, "Invalid argument")
+		fileExists = string.find(err, "Not a directory")
 	end
 
 	lfs.chdir(currentPath)
-
-	return fileExists, isDir
+	return {fileExists, isDir}
 end
 
 --[[
@@ -66,12 +65,13 @@ local Device = class()
 
 function Device:init(port, dType)
 	local basePath = "/sys/class/"..dType.."/"
-	local e = {exists(basePath)}
-	if not e[1] then error("Type does not exist") end
+	if not exists(basePath)[1] then error("Type does not exist") end
+	print(basePath)
 
 	rawset(self.attributes, "_parent", self)
 
 	local devices = listDir(basePath)
+	local found = false
 	for _, v in pairs(devices) do
 		local devicePath = basePath..v.."/"
 
@@ -90,9 +90,12 @@ function Device:init(port, dType)
 				self.commands[v] = true
 			end
 
+			found = true;
 			break
 		end
 	end
+
+	if not found then error("No device found") end
 end
 
 function Device:connected()
@@ -110,8 +113,7 @@ do
 		if not self:connected() then error("Device not connected") end
 
 		local attributePath = self._path..name
-		local e = {exists(attributePath)}
-		if not e[1] then error("Attribute does not exist") end
+		if not exists(attributePath)[1] then error("Attribute '"..name.."' does not exist") end
 
 		local readIO = io.open(attributePath, "r")
 		local data = readIO:read("*a")
@@ -126,8 +128,7 @@ do
 		if not self:connected() then error("Device not connected") end
 
 		local attributePath = self._path..name
-		local e = {exists(attributePath)}
-		if not e[1] then error("Attribute does not exist") end
+		if not exists(attributePath)[1] then error("Attribute '"..name.."' does not exist") end
 
 		local writeIO = io.open(attributePath, "w")
 		writeIO:write(value)
