@@ -520,7 +520,7 @@ end
 function Ultrasonic_Sensor:nearby()
 	self:setMode("US-LISTEN")
 
-	if self.attributes["value0"] == "true" then
+	if self.attributes["value0"] == "1\n" then
 		return true
 	else
 		return false
