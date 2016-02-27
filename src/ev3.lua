@@ -485,6 +485,7 @@ function Colour_Sensor:colour()
 	return tonumber(self.attributes["value0"])
 end
 
+--RGB support is VERY experimental. Use at your own risk.
 local rgb_constant = 1020/256 --Used to convert the raw rgb value (0 - 1020) to the usual rgb range (0 - 255)
 function Colour_Sensor:rgb()
 	self:setMode("RGB-RAW")
@@ -493,7 +494,7 @@ function Colour_Sensor:rgb()
 	local g = math.floor(tonumber(self.attributes["value1"]) / rgb_constant)
 	local b = math.floor(tonumber(self.attributes["value2"]) / rgb_constant)
 
-	return {r, g, b}
+	return r, g, b
 end
 
 --[[
@@ -684,12 +685,12 @@ function PowerSupply:init()
 
 	rawset(self.attributes, "_parent", self)
 
-	local devicePath = basePath..listDir(basePath)[0].."/"
+	local devicePath = basePath..listDir(basePath)[1].."/"
 
 	--Set device info
 	self._path = devicePath
-	self.port = nil
-	self._type = self.attributes["driver_name"]
+	self._port = "power_supply"
+	self._type = "power_supply"
 end
 
 function PowerSupply:current()
