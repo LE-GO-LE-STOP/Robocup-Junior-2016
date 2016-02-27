@@ -1,4 +1,5 @@
-local lfs = require "lfs"
+local lfs = require("lfs")
+--local bit = require("bit")
 local class = require("class").class
 
 --Util functions
@@ -810,6 +811,39 @@ function LEDS:init()
 		green = LED("/sys/class/leds/ev3:right:green:ev3dev/")
 	}
 end
+
+--[[
+
+Buttons:
+Read button input.
+
+Parameters:
+
+
+--]]
+--[[
+local function test_bit(bit, bytes)
+	if bit.band(bytes[bit / 8 + 1], bit.blshift(1, bit % 8)) == 1 then
+		return false
+	else
+		return true
+	end
+end
+
+local function EVIOCGKEY()
+	return 2153792792
+end
+
+local Buttons = class()
+
+function Buttons:get()
+	local buttonStates = {
+		up = test_bit(103)
+	}
+
+	return buttonStates
+end
+--]]
 
 return {
 	--Utills
