@@ -5,7 +5,7 @@ local class = require("class").class
 local function stringSplit(inputstr, sep)
 	--http://stackoverflow.com/a/7615129/3404868
     sep = sep or "%s"
-    
+
     local t={} ; i=1
     for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
         t[i] = str
@@ -447,7 +447,7 @@ function Touch_Sensor:init(port)
 end
 
 function Touch_Sensor:pressed()
-	if self.attributes["value0"] == "true" then
+	if self.attributes["value0"] == "1\n" then
 		return true
 	else
 		return false
