@@ -66,7 +66,6 @@ local Device = class()
 function Device:init(port, dType)
 	local basePath = "/sys/class/"..dType.."/"
 	if not exists(basePath)[1] then error("Type does not exist") end
-	print(basePath)
 
 	rawset(self.attributes, "_parent", self)
 
