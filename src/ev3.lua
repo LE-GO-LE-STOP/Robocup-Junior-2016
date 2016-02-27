@@ -263,6 +263,10 @@ function Motor:reset()
 	end
 end
 
+function Motor:position()
+	return self:positionToDegrees(tonumber(self.attributes["position"]))
+end
+
 --[[
 
 DC Motor:
@@ -694,11 +698,11 @@ function PowerSupply:init()
 end
 
 function PowerSupply:current()
-	return tonumber(self.attributes["measured_current"]) / 1000000
+	return tonumber(self.attributes["current_now"]) / 1000000
 end
 
 function PowerSupply:voltage()
-	return tonumber(self.attributes["measured_voltage"]) / 1000000
+	return tonumber(self.attributes["voltage_now"]) / 1000000
 end
 
 return {
