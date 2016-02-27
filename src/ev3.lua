@@ -673,6 +673,44 @@ end
 
 --[[
 
+Sound:
+Play sound through the EV3's internal speaker.
+
+NOTE: Sound is played by running shell commands. The input is not sanitised. DO NOT generate/run sounds based on raw user input!
+
+Parameters:
+
+
+--]]
+
+local Sound = class()
+
+function Sound:playTone(hz, seconds, nonBlocking)
+	hz = hz or 440
+	local time = (seconds or 1)*1000
+
+	if nonBlocking ~= false then
+		return io.popen("beep -f "..tostring(hz).." -l "..tostring(time), "r")
+	else
+		return os.execute("beep -f "..tostring(hz).." -l "..tostring(time))
+	end
+end
+
+function Sound:playFile(path, nonBlocking)
+	local e = exists(path)
+	if e[1] and not e[2] then
+		if nonBlocking ~= false then
+			return io.popen("aplay -q "..path, "r")
+		else
+			return os.execute("aplay -q "..path)
+		end
+	else
+		error("File is not playable")
+	end
+end
+
+--[[
+
 Power Suppy:
 Get information on the power state.
 
@@ -751,7 +789,6 @@ function LEDS:init()
 	}
 end
 
-
 return {
 	--Utills
 	sleep = sleep,
@@ -827,6 +864,7 @@ return {
 	Light_Sensor = Light_Sensor,
 
 	--Sound
+	Sound = Sound,
 
 	--Power
 	PowerSupply = PowerSupply,
