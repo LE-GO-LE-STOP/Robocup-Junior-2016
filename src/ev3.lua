@@ -4,13 +4,12 @@ local class = require("class").class
 --Util functions
 local function stringSplit(inputstr, sep)
 	--http://stackoverflow.com/a/7615129/3404868
-    if sep == nil then
-            sep = "%s"
-    end
+    sep = sep or "%s"
+    
     local t={} ; i=1
     for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
-            t[i] = str
-            i = i + 1
+        t[i] = str
+        i = i + 1
     end
     return t
 end
@@ -115,7 +114,7 @@ do
 		if not exists(attributePath)[1] then error("Attribute '"..name.."' does not exist") end
 
 		local readIO = io.open(attributePath, "r")
-		local data = readIO:read("*a")
+		local data = readIO:read("*a") or ""
 		readIO:close()
 
 		return data
@@ -188,6 +187,7 @@ function Motor:off(brake)
 end
 
 function Motor:on(power)
+	power = power or 100
 	if type(power) ~= "number" then error("power is not a number!") end
 
 	if self.commands["run-forever"] then
@@ -395,7 +395,7 @@ String port - The port to look for. Constants provided for convenience.
 local Sensor = class(Device)
 
 function Sensor:init(port)
-	Device.init(self, port, "sensor")
+	Device.init(self, port, "lego-sensor")
 
 	self.modes = {}
 	for _, v in pairs(stringSplit(self.attributes["modes"])) do
