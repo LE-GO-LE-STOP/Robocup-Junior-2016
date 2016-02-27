@@ -686,17 +686,23 @@ Parameters:
 local Sound = class()
 
 function Sound:playTone(hz, seconds, nonBlocking)
+	if type(hz or 0) ~= "number" or type(seconds or 0) ~= "number" then error("Invalid input") end
+
 	hz = hz or 440
 	local time = (seconds or 1)*1000
 
-	if nonBlocking ~= false then
-		return io.popen("beep -f "..tostring(hz).." -l "..tostring(time), "r")
-	else
-		return os.execute("beep -f "..tostring(hz).." -l "..tostring(time))
+	local soundIO = io.open("/sys/devices/platform/snd-legoev3/tone", "w")
+	soundIO:write(tostring(hz).." "..tostring(time))
+	sound:close()
+
+	if nonBlocking == false then
+		sleep(seconds)
 	end
 end
 
 function Sound:playFile(path, nonBlocking)
+	if type(path) ~= "string" then error("Invalid path") end
+
 	local e = exists(path)
 	if e[1] and not e[2] then
 		if nonBlocking ~= false then
@@ -706,6 +712,22 @@ function Sound:playFile(path, nonBlocking)
 		end
 	else
 		error("File is not playable")
+	end
+end
+
+function Sound:speak(text, voice, nonBlocking)
+	if type(text) ~= "string" or type(voice or "") ~= "string" then error("Invalid input") end
+
+	local command = "espeak --stdout '"..text.."'"
+	if voice then
+		command = command.." -v "..voice
+	end
+	command = command.." | aplay -q"
+
+	if nonBlocking ~= false then
+		return io.popen(command, "r")
+	else
+		return os.execute(command)
 	end
 end
 
