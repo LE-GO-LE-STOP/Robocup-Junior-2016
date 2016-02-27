@@ -705,6 +705,53 @@ function PowerSupply:voltage()
 	return tonumber(self.attributes["voltage_now"]) / 1000000
 end
 
+--[[
+
+LEDS:
+Control the LED's
+
+Parameters:
+
+
+--]]
+
+local LED = class()
+
+function LED:init(path)
+	self._path = path
+end
+
+function LED:brightness(brightness)
+	if brightness then
+		if type(brightness) ~= "number" or brightness < 0 or brightness > 255 then error("Invalid brightness") end
+
+		local deviceIO = io.open(self._path.."brightness", "w")
+		deviceIO:write(brightness)
+		deviceIO:close()
+		return data
+	else
+		local deviceIO = io.open(self._path.."brightness", "r")
+		local data = tonumber(deviceIO:read("*a"))
+		deviceIO:close()
+		return data
+	end
+end
+
+local LEDS = class()
+
+function LEDS:init()
+	self.left = {
+		red = LED("/sys/class/leds/ev3:left:red:ev3dev/"),
+		green = LED("/sys/class/leds/ev3:left:green:ev3dev/")
+	}
+
+	self.right = {
+		red = LED("/sys/class/leds/ev3:right:red:ev3dev/"),
+		green = LED("/sys/class/leds/ev3:right:green:ev3dev/")
+	}
+end
+
+
 return {
 	--Utills
 	sleep = sleep,
@@ -782,9 +829,10 @@ return {
 	--Sound
 
 	--Power
-	PowerSupply = PowerSupply
+	PowerSupply = PowerSupply,
 
 	--LED
+	LEDS = LEDS
 
 	--Buttons
 }
