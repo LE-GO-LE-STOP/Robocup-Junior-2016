@@ -676,6 +676,27 @@ end
 
 --[[
 
+Compass Sensor:
+Used to control a HiTechnic Compass Sensor.
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Compass_Sensor = class(Sensor)
+
+function Compass_Sensor:init(port)
+	Sensor.init(self, port)
+	self:setMode("COMPASS")
+end
+
+function Compass_Sensor:direction()
+	return tonumber(self.attributes["value0"])
+end
+
+--[[
+
 Sound:
 Play sound through the EV3's internal speaker.
 
@@ -896,6 +917,7 @@ return {
 	Infrared_Sensor = Infrared_Sensor,
 	Sound_Sensor = Sound_Sensor,
 	Light_Sensor = Light_Sensor,
+	Compass_Sensor = Compass_Sensor,
 
 	--Sound
 	Sound = Sound,
