@@ -693,11 +693,24 @@ local Compass_Sensor = class(Sensor)
 
 function Compass_Sensor:init(port)
 	Sensor.init(self, port)
+	self.origin = 0
 	self:setMode("COMPASS")
 end
 
 function Compass_Sensor:direction()
 	return tonumber(self.attributes["value0"]) + 180 -- Get the value from the sensor and convert it from -180 - 180 to 0 - 360
+end
+
+function Compass_Sensor:relativeDirection()
+	return self.origin - self:direction()
+end
+
+function Compass_Sensor:setOrigin()
+	self.origin = self:direction()
+end
+
+function Compass_Sensor:resetOrigin()
+	self.origin = 0
 end
 
 --[[
