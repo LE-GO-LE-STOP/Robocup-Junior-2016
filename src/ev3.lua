@@ -1,3 +1,5 @@
+local fastMode = true
+
 local lfs = require("lfs")
 --local bit = require("bit")
 local class = require("class").class
@@ -65,7 +67,7 @@ local Device = class()
 
 function Device:init(port, dType)
 	local basePath = "/sys/class/"..dType.."/"
-	if not exists(basePath)[1] then error("Type does not exist") end
+	if not (exists(basePath)[1] or fastMode) then error("Type does not exist") end
 
 	rawset(self.attributes, "_parent", self)
 
@@ -112,10 +114,10 @@ do
 		if not self:connected() then error("Device not connected") end
 
 		local attributePath = self._path..name
-		if not exists(attributePath)[1] then error("Attribute '"..name.."' does not exist") end
+		if not (exists(attributePath)[1] or fastMode) then error("Attribute '"..name.."' does not exist") end
 
 		local readIO = io.open(attributePath, "r")
-		local data = readIO:read("*a") or ""
+		local data = readIO:read("*l") or ""
 		readIO:close()
 
 		return data
@@ -127,7 +129,7 @@ do
 		if not self:connected() then error("Device not connected") end
 
 		local attributePath = self._path..name
-		if not exists(attributePath)[1] then error("Attribute '"..name.."' does not exist") end
+		if not (exists(attributePath)[1] or fastMode) then error("Attribute '"..name.."' does not exist") end
 
 		local writeIO = io.open(attributePath, "w")
 		writeIO:write(value)
@@ -452,7 +454,7 @@ function Touch_Sensor:init(port)
 end
 
 function Touch_Sensor:pressed()
-	if self.attributes["value0"] == "1\n" then
+	if self.attributes["value0"] == "1" then
 		return true
 	else
 		return false
@@ -526,7 +528,7 @@ end
 function Ultrasonic_Sensor:nearby()
 	self:setMode("US-LISTEN")
 
-	if self.attributes["value0"] == "1\n" then
+	if self.attributes["value0"] == "1" then
 		return true
 	else
 		return false
@@ -705,7 +707,7 @@ function Sound:playFile(path, nonBlocking)
 	if type(path) ~= "string" then error("Invalid path") end
 
 	local e = exists(path)
-	if e[1] and not e[2] then
+	if (e[1] and not e[2]) or fastMode then
 		if nonBlocking ~= false then
 			return io.popen("aplay -q "..path, "r")
 		else
