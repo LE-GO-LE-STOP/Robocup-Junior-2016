@@ -1,4 +1,4 @@
-local fastMode = true
+local debugMode = true -- Fastmode disables fs exist checks in order to speed up IO operations
 
 local lfs = require("lfs")
 --local bit = require("bit")
@@ -52,6 +52,10 @@ local function exists(path)
 	return {fileExists, isDir}
 end
 
+local function setDebugMode(mode)
+	debugMode = mode
+end
+
 --[[
 
 Device:
@@ -67,7 +71,7 @@ local Device = class()
 
 function Device:init(port, dType)
 	local basePath = "/sys/class/"..dType.."/"
-	if not (exists(basePath)[1] or fastMode) then error("Type does not exist") end
+	if not (exists(basePath)[1] or debugMode) then error("Type does not exist") end
 
 	rawset(self.attributes, "_parent", self)
 
@@ -114,7 +118,7 @@ do
 		if not self:connected() then error("Device not connected") end
 
 		local attributePath = self._path..name
-		if not (exists(attributePath)[1] or fastMode) then error("Attribute '"..name.."' does not exist") end
+		if not (exists(attributePath)[1] or debugMode) then error("Attribute '"..name.."' does not exist") end
 
 		local readIO = io.open(attributePath, "r")
 		local data = readIO:read("*l") or ""
@@ -129,7 +133,7 @@ do
 		if not self:connected() then error("Device not connected") end
 
 		local attributePath = self._path..name
-		if not (exists(attributePath)[1] or fastMode) then error("Attribute '"..name.."' does not exist") end
+		if not (exists(attributePath)[1] or debugMode) then error("Attribute '"..name.."' does not exist") end
 
 		local writeIO = io.open(attributePath, "w")
 		writeIO:write(value)
@@ -676,8 +680,9 @@ end
 
 --[[
 
-Compass Sensor:
+HiTechnic Compass Sensor:
 Used to control a HiTechnic Compass Sensor.
+http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NMC1034
 
 Parameters:
 String port - The port to look for. Constants provided for convenience.
@@ -693,6 +698,64 @@ end
 
 function Compass_Sensor:direction()
 	return tonumber(self.attributes["value0"])
+end
+
+--[[
+
+HiTechnic IRSeeker V2 Sensor:
+Used to control a HiTechnic IRSeeker V2 Sensor.
+http://www.hitechnic.com/cgi-bin/commerce.cgi?preadd=action&key=NSK1042
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local IRSeeker = class(Sensor)
+
+function IRSeeker:init(port)
+	Sensor.init(self, port)
+end
+
+function IRSeeker:direction(um)
+	if um then
+		self:setMode("DC")
+	else
+		self:setMode("AC")
+	end
+
+	return tonumber(self.attributes["value0"])
+end
+
+function IRSeeker:angle(um)
+	return math.floor((self:direction(um) * 240 - 1200) / 9) -- Approximate an angle that the IR source is at. Between -120 to 120
+end
+
+function IRSeeker:raw(um)
+	if um then
+		self:setMode("DC-ALL")
+
+		return {
+			tonumber(self.attributes["value0"]),
+			tonumber(self.attributes["value1"]),
+			tonumber(self.attributes["value2"]),
+			tonumber(self.attributes["value3"]),
+			tonumber(self.attributes["value4"]),
+			tonumber(self.attributes["value5"]),
+			tonumber(self.attributes["value6"])
+		}
+	else
+		self:setMode("AC-ALL")
+
+		return {
+			tonumber(self.attributes["value0"]),
+			tonumber(self.attributes["value1"]),
+			tonumber(self.attributes["value2"]),
+			tonumber(self.attributes["value3"]),
+			tonumber(self.attributes["value4"]),
+			tonumber(self.attributes["value5"])
+		}
+	end
 end
 
 --[[
@@ -728,7 +791,7 @@ function Sound:playFile(path, nonBlocking)
 	if type(path) ~= "string" then error("Invalid path") end
 
 	local e = exists(path)
-	if (e[1] and not e[2]) or fastMode then
+	if (e[1] and not e[2]) or debugMode then
 		if nonBlocking ~= false then
 			return io.popen("aplay -q "..path, "r")
 		else
@@ -871,6 +934,7 @@ end
 return {
 	--Utills
 	sleep = sleep,
+	debug = setDebugMode,
 
 	--Constants
 	OUTPUT_AUTO = nil,
