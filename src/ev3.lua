@@ -525,7 +525,7 @@ function Ultrasonic_Sensor:init(port)
 end
 
 function Ultrasonic_Sensor:distance(mode)
-	self:setMode(mode)
+	self:setMode(mode or "US-SI-CM")
 	return tonumber(self.attributes["value0"]) / 10
 end
 
