@@ -1,17 +1,23 @@
---require 'lfs'
-dofile('dummyio.lua')
+local fastMode = true
 
-ev3 = {}
+local lfs = require("lfs")
+--local bit = require("bit")
+local class = require("class").class
 
-local function stringSplit(inputString)
-	local output = {}
-	for i in string.gmatch(inputString, "%S+") do
-  		table.insert(output, i)
-	end
-	return output
+--Util functions
+local function stringSplit(inputstr, sep)
+	--http://stackoverflow.com/a/7615129/3404868
+    sep = sep or "%s"
+
+    local t={} ; i=1
+    for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
+        t[i] = str
+        i = i + 1
+    end
+    return t
 end
 
-function sleep(time)
+local function sleep(time)
 	local timeStart = os.clock()
 	while os.clock() - timeStart <= time do end
 end
@@ -24,7 +30,7 @@ local function listDir(dir)
 		local directory = iterator(id)
 		if directory == nil then
 			break
-		else
+		elseif directory ~= "." and directory ~= ".." then
 			table.insert(output, directory)
 		end
 	end
@@ -32,716 +38,895 @@ local function listDir(dir)
 	return output
 end
 
-local function setValue(path, value)
-	local setValueIO = io.open(path, "w")
-	setValueIO:write(value)
-	setValueIO:close()
+local function exists(path)
+	local currentPath = lfs.currentdir()
+
+	local isDir, err = lfs.chdir(path)
+
+	local fileExists = true
+	if err then
+		fileExists = string.find(err, "Not a directory")
+	end
+
+	lfs.chdir(currentPath)
+	return {fileExists, isDir}
 end
 
-local function getValue(path, value)
-	local getValueIO = io.open(device.raw.path.."duty_cycle_spycle", "r")
-	local getValueResult = getValueIO:read("*a")
-	getValueIO:close()
-	return getValueResult
+--[[
+
+Device:
+The base class for all motors and sensors. Handles low level file system writes.
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+String dType - The type of device to search for. See /sys/class for types.
+
+--]]
+
+local Device = class()
+
+function Device:init(port, dType)
+	local basePath = "/sys/class/"..dType.."/"
+	if not (exists(basePath)[1] or fastMode) then error("Type does not exist") end
+
+	rawset(self.attributes, "_parent", self)
+
+	local devices = listDir(basePath)
+	local found = false
+	for _, v in pairs(devices) do
+		local devicePath = basePath..v.."/"
+
+		local deviceIO = io.open(devicePath.."address", "r")
+		local devicePort = deviceIO:read("*l")
+		deviceIO:close()
+		if not port or devicePort == port then
+			--Found device on port requested
+			--Set device info
+			self._path = devicePath
+			self._port = devicePort
+			self._type = self.attributes["driver_name"]
+
+			self.commands = {}
+			for _, v in pairs(stringSplit(self.attributes["commands"])) do
+				self.commands[v] = true
+			end
+
+			found = true;
+			break
+		end
+	end
+
+	if not found then error("No device found") end
 end
 
-local function setBrake(device, brake)
-	if brake == "coast" then
-		if self.stop_commands["coast"] then
-			self.raw:stop_command("coast")
+function Device:connected()
+	return self._path ~= nil
+end
+
+--Attribute read/write
+Device.attributes = {}
+do
+	local mt = {}
+
+	mt.__index = function(attrTable, name)
+		local self = attrTable._parent
+
+		if not self:connected() then error("Device not connected") end
+
+		local attributePath = self._path..name
+		if not (exists(attributePath)[1] or fastMode) then error("Attribute '"..name.."' does not exist") end
+
+		local readIO = io.open(attributePath, "r")
+		local data = readIO:read("*l") or ""
+		readIO:close()
+
+		return data
+	end
+
+	mt.__newindex = function(attrTable, name, value)
+		local self = attrTable._parent
+
+		if not self:connected() then error("Device not connected") end
+
+		local attributePath = self._path..name
+		if not (exists(attributePath)[1] or fastMode) then error("Attribute '"..name.."' does not exist") end
+
+		local writeIO = io.open(attributePath, "w")
+		writeIO:write(value)
+		writeIO:close()
+	end
+
+	setmetatable(Device.attributes, mt)
+end
+
+function Device:type()
+	return self._type
+end
+
+function Device:port()
+	return self._port
+end
+
+--[[
+
+Motor:
+Used to control official LEGO motors.
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Motor = class(Device)
+
+function Motor:init(port)
+	Device.init(self, port, "tacho-motor")
+
+	self.stop_commands = {}
+	for _, v in pairs(stringSplit(self.attributes["stop_commands"])) do
+		self.stop_commands[v] = true
+	end
+end
+
+function Motor:positionToDegrees(position)
+	return (360/self.attributes["count_per_rot"])*position
+end
+
+function Motor:degreesToPosition(degrees)
+	return (self.attributes["count_per_rot"]/360)*degrees
+end
+
+function Motor:setBrake(brake)
+	if brake then
+		if not self.stop_commands[brake] then error(brake.." is not supported on this motor") end
+
+		self.attributes["stop_command"] = brake
+	end
+end
+
+function Motor:off(brake)
+	self:setBrake(brake)
+	self.attributes["command"] = "stop"
+end
+
+function Motor:on(power)
+	power = power or 100
+	if type(power) ~= "number" then error("power is not a number!") end
+
+	if self.commands["run-forever"] then
+		self.attributes["duty_cycle_sp"] = power
+		self.attributes["command"] = "run-forever"
+	else
+		error("run-forever is not supported on this motor")
+	end
+end
+
+function Motor:on_for_seconds(power, seconds, brake, nonBlocking)
+	if type(seconds) ~= "number" then error("seconds is not a number!") end
+
+	if type(power) ~= "number" then error("power is not a number!") end
+	self.attributes["duty_cycle_sp"] = power
+
+	if nonBlocking then
+		if self.commands["run-timed"] then
+			self:setBrake(brake)
+
+			self.attributes["time_sp"] = seconds*1000
+			self.attributes["command"] = "run-timed"
 		else
-			return nil, "coast is not supported on this motor"
-		end
-	elseif brake == "hold" then
-		if self.stop_commands["hold"] then
-			self.raw:stop_command("hold")
-		else
-			return nil, "hold is not supported on this motor"
-		end
-	elseif brake == "brake" or brake == nil then
-		if self.stop_commands["brake"] then
-			self.raw:stop_command("brake")
-		else
-			return nil, "break is not supported on this motor"
+			error("run-timed is not supported on this motor")
 		end
 	else
-		return nil, brake.." is an invalid stop command"
+		self:on(power)
+		sleep(seconds)
+		self:off(brake)
 	end
-	return true
 end
 
-local function positionToDegrees(device, poition)
-	return (360/device.raw.count_per_rot)*position
+function Motor:on_for_degrees(power, degrees, brake, nonBlocking)
+	if type(degrees) ~= "number" then error("degrees is not a number!") end
+	local position = self:degreesToPosition(degrees)
+
+	if type(power) ~= "number" then error("power is not a number!") end
+	self.attributes["duty_cycle_sp"] = power
+
+	if nonBlocking then
+		if self.commands["run-to-rel-pos"] then
+			self:setBrake(brake)
+
+			self.attributes["position_sp"] = position
+			self.attributes["command"] = "run-to-rel-pos"
+		else
+			error("run-to-rel-pos is not supported on this motor")
+		end
+	else
+		local targetPosition = tonumber(self.attributes["position"]) + position
+
+		self:on(power)
+
+		if degrees >= 0 then
+			while tonumber(self.attributes["position"]) < targetPosition do end
+		else
+			while tonumber(self.attributes["position"]) > targetPosition do end
+		end
+
+		self:off(brake)
+	end
 end
 
-local function degreesToPosition(device, degrees)
-	return (device.raw.count_per_rot/360)*degrees
+function Motor:on_for_rotations(power, rotations, brake, nonBlocking)
+	self:on_for_degrees(power, rotations*360, brake, nonBlocking)
 end
 
-local function getDevices(type)
-	return listDir("/sys/class/"..type)
+function Motor:reset()
+	if self.commands["reset"] then
+		self.attributes["command"] = "reset"
+	else
+		error("reset is not supported on this motor")
+	end
 end
 
---Constants
-OUT_A = "outA"
-OUT_B = "outB"
-OUT_C = "outC"
-OUT_D = "outD"
+function Motor:position()
+	return self:positionToDegrees(tonumber(self.attributes["position"]))
+end
 
-IN_1 = "in1"
-IN_2 = "in2"
-IN_3 = "in3"
-IN_4 = "in4"
+--[[
 
-NOCOLOUR = 0
-BLACK = 1
-BLUE = 2
-GREEN = 3
-YELLOW = 4
-RED = 5
-WHITE = 6
-BROWN = 7
+DC Motor:
+Used to control a generic DC Motor.
 
-COLOUR = "COL-COLOR"
-REFLECT = "COL-REFLECT"
-AMBIENT = "COL-AMBIENT"
+Parameters;
+String port - The port to look for. Constants provided for convenience.
 
-PROXIMITY = "IR-PROX"
-BEACON = "IR-SEEK"
-REMOTE = "IR-REMOTE"
+--]]
 
-CONTINUOS_CM = "US-DIST-CM"
-CONTINUOS_INCH = "US-DIST-IN"
-SINGLE_CM = "US-SI-CM"
-SINGLE_INCH = "US-SI-IN"
-LISTEN = "US-LISTEN"
+local DC_Motor = class(Device)
 
---Motors
-ev3.newMotor = function(port)
-	local devices = getDevices("tacho-motor")
-	local device = {["raw"] = {}}
+function DC_Motor:init(port)
+	Device.init(self, port, "dc-motor")
 
-	for k, v in pairs(devices) do
-		local portIO = io.open("/sys/class/tacho-motor/"..v.."/port_name", "r")
-		local portName = portIO:read("*a")
-		if (portName == port) or port == nil then
-			device.raw.path = "/sys/class/tacho-motor/"..v.."/"
-			device.raw.port_name = portName
+	self.stop_commands = {}
+	for _, v in pairs(stringSplit(self.attributes["stop_commands"])) do
+		self.stop_commands[v] = true
+	end
+end
+
+--[[
+
+Server Motor:
+Used to control a generic servo motor.
+
+Parameters;
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Servo_Motor = class(Device)
+
+function Servo_Motor:init(port)
+	--Command discovery code is ommited, because servo motors do not have the commands attribute
+	local basePath = "/sys/class/servo-motor/"
+
+	rawset(self.attributes, "_parent", self)
+
+	local devices = listDir(basePath)
+	for _, v in pairs(devices) do
+		local devicePath = basePath..v.."/"
+
+		local deviceIO = io.open(devicePath.."address", "r")
+		local devicePort = deviceIO:read("*l")
+		deviceIO:close()
+		if not port or devicePort == port then
+			--Found device on port requested
+			--Set device info
+			self._path = devicePath
+			self._port = devicePort
+			self._type = self.attributes["driver_name"]
+
+			self.commands = {run = true, float = true}
+
 			break
 		end
-		portIO:close()
-	end
-
-	if not device.raw.path then
-		return nil, "no motor on "..port
-	end
-
-	--The default API
-	device.raw.command = function(self, command, value)
-		setValue(self.raw.path.."command", value)
-	end
-
-	device.raw.commands = stringSplit(getValue(device.raw.path.."commands"))
-
-	device.raw.count_per_rot = getValue(device.raw.path.."count_per_rot")
-
-	device.raw.driver_name = getValue(device.raw.path.."driver_name")
-
-	device.raw.duty_cycle = function(self)
-		return getValue(self.raw.path.."duty_cycle")
-	end
-
-	device.raw.duty_cycle_sp = function(self, value)
-		if value then
-			setValue(self.raw.path.."duty_cycle", value)
-		else
-			return getValue(self.raw.path.."duty_cycle_sp")
-		end
-	end
-
-	device.raw.encoder_polarity = function(self, value)
-		if value then
-			setValue(self.raw.path.."encoder_polarity", value)
-		else
-			return getValue(self.raw.path.."encoder_polarity")
-		end
-	end
-
-	device.raw.polarity = function(self, value)
-		if value then
-			setValue(self.raw.path.."polarity", value)
-		else
-			return getValue(self.raw.path.."polarity")
-		end
-	end
-
-	--port_name is defined above in the device finding loop
-
-	device.raw.position = function(self, value)
-		if value then
-			setValue(self.raw.path.."position", value)
-		else
-			return getValue(self.raw.path.."position")
-		end
-	end
-
-	device.raw.hold_pid_Kd = function(self, value)
-		if value then
-			setValue(self.raw.path.."hold_pid_Kd", value)
-		else
-			return getValue(self.raw.path.."hold_pid_Kd")
-		end
-	end
-
-	device.raw.hold_pid_Ki = function(self, value)
-		if value then
-			setValue(self.raw.path.."hold_pid_Ki", value)
-		else
-			return getValue(self.raw.path.."hold_pid_Ki")
-		end
-	end
-
-	device.raw.hold_pid_Kp = function(self, value)
-		if value then
-			setValue(self.raw.path.."hold_pid_Kp", value)
-		else
-			return getValue(self.raw.path.."hold_pid_Kp")
-		end
-	end
-
-	device.raw.position_sp = function(self, value)
-		if value then
-			setValue(self.raw.path.."position_sp", value)
-		else
-			return getValue(self.raw.path.."position_sp")
-		end
-	end
-
-	device.raw.speed_pid_Kp = function(self, value)
-		if value then
-			setValue(self.raw.path.."speed_pid_Kp", value)
-		else
-			return getValue(self.raw.path.."speed_pid_Kp")
-		end
-	end
-
-	device.raw.speed = function(self)
-		return getValue(self.raw.path.."speed")
-	end
-
-	device.raw.speed_sp = function(self, value)
-		if value then
-			setValue(self.raw.path.."speed_sp", value)
-		else
-			return getValue(self.raw.path.."speed_sp")
-		end
-	end
-
-	device.raw.ramp_up_sp = function(self, value)
-		if value then
-			setValue(self.raw.path.."ramp_up_sp", value)
-		else
-			return getValue(self.raw.path.."ramp_up_sp")
-		end
-	end
-
-	device.raw.ramp_down_sp = function(self, value)
-		if value then
-			setValue(self.raw.path.."ramp_down_sp", value)
-		else
-			return getValue(self.raw.path.."ramp_down_sp")
-		end
-	end
-
-	device.raw.speed_regulation = function(self, value)
-		if value then
-			setValue(self.raw.path.."speed_regulation", value)
-		else
-			return getValue(self.raw.path.."speed_regulation")
-		end
-	end
-
-	device.raw.speed_pid_Kd = function(self, value)
-		if value then
-			setValue(self.raw.path.."speed_pid_Kd", value)
-		else
-			return getValue(self.raw.path.."speed_pid_Kd")
-		end
-	end
-
-	device.raw.speed_pid_Ki = function(self, value)
-		if value then
-			setValue(self.raw.path.."speed_pid_Ki", value)
-		else
-			return getValue(self.raw.path.."speed_pid_Ki")
-		end
-	end
-
-	device.raw.speed_pid_Kp = function(self, value)
-		if value then
-			setValue(self.raw.path.."speed_pid_Kp", value)
-		else
-			return getValue(self.raw.path.."speed_pid_Kp")
-		end
-	end
-
-	device.raw.state = function(self, value)
-		return stringSplit(getValue(self.raw.path.."state"))
-	end
-
-	device.raw.stop_command = function(self, value)
-		if value then
-			setValue(self.raw.path.."stop_command", value)
-		else
-			return getValue(self.raw.path.."stop_command")
-		end
-	end
-
-	device.raw.stop_commands = stringSplit(getValue(device.raw.path.."stop_commands"))
-
-	device.raw.time_sp = function(self, value)
-		if value then
-			setValue(self.raw.path.."time_sp", value)
-		else
-			return getValue(self.raw.path.."time_sp")
-		end
-	end
-
-	--Start abstraction layer
-	device.commands = {}
-	for k, v in pairs(device.raw.commands) do
-		device.commands[v] = true
-	end
-
-	device.stop_commands = {}
-	for k, v in pairs(device.raw.stop_commands) do
-		device.stop_commands[v] = true
-	end
-
-	device.off = function(self, brake)
-		local result, err = setBrake(self, brake)
-		if not result then return nil, err end
-
-		self.raw:command("stop")
-		return true
-	end
-
-	device.on = function(self, power)
-		if self.commands["run-forever"] then
-			self.raw:duty_cycle_sp(tonumber(power))
-			self.raw:command("run-forever")
-		else
-			return nil, "run-forever is not supported on this motor"
-		end
-		return true
-	end
-
-	device.on_for_seconds = function(self, power, seconds, brake, nonBlocking)
-		self.raw:duty_cycle_sp(tonumber(power))
-
-		if nonBlocking then
-			if self.commands["run-timed"] then
-				local result, err = setBrake(self, brake)
-				if not result then return nil, err end
-
-				self.raw:time_sp(tonumber(seconds)*1000)
-				self.raw:command("run-timed")
-			else
-				return nil, "run-timed is not supported on this motor"
-			end
-		else
-			local result, err = self:on()
-			if not result then return nil, err end
-			sleep(seconds)
-			local result, err = self:off(brake)
-			if not result then return nil, err end
-		end
-		return true
-	end
-
-	device.on_for_degrees = function(self, power, degrees, brake, nonBlocking)
-		self.raw:duty_cycle_sp(tonumber(power))
-
-		if nonBlocking then
-			if self.commands["run-to-rel-pos"] then
-				local result, err = setBrake(self, brake)
-				if not result then return nil, err end
-
-				self.raw:position_sp(degreesToPosition(self, degrees))
-				self.raw:command("run-to-rel-pos")
-			else
-				return nil, "run-to-rel-pos is not supported on this motor"
-			end
-		else
-			local targetPosition = self.raw:position() + degreesToPosition(self, degrees)
-			local result, err = self:on()
-			if not result then return nil, err end
-
-			if degrees >= 0 then
-				while self.raw:position() < targetPosition do end
-			else
-				while self.raw:position() > targetPosition do end
-			end
-
-			local result, err = self:off()
-			if not result then return nil, err end
-		end
-		return true
-	end
-
-	device.on_for_rotations = function(self, power, rotations, brake, nonBlocking)
-		return self:on_for_degrees(power, rotations*360, brake, nonBlocking)
-	end
-
-	device.reset = function(self)
-		self.raw:command("reset")
-		return true
-	end
-
-	return device
-end
-
-ev3.newTank = function(leftMotor, rightMotor)
-	local device = {["leftMotor"] = leftMotor, ["rightMotor"] = rightMotor}
-
-	device.off = function(self, brake)
-		local result, err = self.leftMotor:off(brake)
-		if not result then return nil, err end
-
-		local result, err = self.rightMotor:off(brake)
-		if not result then return nil, err end
-
-		return true
-	end
-
-	device.on = function(self, leftPower, rightPower)
-		local result, err = self.leftMotor:on(leftPower)
-		if not result then return nil, err end
-
-		local result, err = self.rightMotor:on(rightPower)
-		if not result then return nil, err end
-
-		return true
-	end
-
-	device.on_for_seconds = function(self, leftPower, rightPower, seconds, brake, nonBlocking)
-		local result, err = self.leftMotor:on_for_seconds(leftPower, seconds, brake, true)
-		if not result then return nil, err end
-		
-		local result, err = self.rightMotor:on_for_seconds(rightPower, seconds, brake, nonBlocking)
-		if not result then return nil, err end
-
-		return true
-	end
-
-	device.on_for_degrees = function(self, leftPower, rightPower, degrees, brake, nonBlocking)
-		local result, err = self.leftMotor:on_for_degrees(leftPower, seconds, brake, true)
-		if not result then return nil, err end
-		
-		local result, err = self.rightMotor:on_for_degrees(rightPower, seconds, brake, nonBlocking)
-		if not result then return nil, err end
-
-		return true
-	end
-
-	device.on_for_rotations = function(self, leftPower, rightPower, rotations, brake, nonBlocking)
-		local result, err = self.leftMotor:on_for_rotations(leftPower, seconds, brake, true)
-		if not result then return nil, err end
-		
-		local result, err = self.rightMotor:on_for_rotations(rightPower, seconds, brake, nonBlocking)
-		if not result then return nil, err end
-
-		return true
-	end
-
-	device.turn = function(self, power, direction, brake, nonBlocking)
-		--direction from -90 to face left to 90 to face right
-		return self:on_for_degrees(power, -power, direction/2, brake, nonBlocking)
-	end
-
-	device.turnLeft = function(self, power, brake, nonBlocking)
-		return self:turn(power, -90, brake, nonBlocking)
-	end
-
-	device.turnRight = function(self, power, nonBlocking)
-		return self:turn(power, 90, brake, nonBlocking)
-	end
-
-	device.reset = function(self)
-		self.leftMotor:reset()
-		self.rightMotor:reset()
-
-		return true
-	end
-
-	return device
-end
-
---Sensors
-ev3.newSensor = function(port)
-	local devices = getDevices("sensor")
-	local device = {["raw"] = {}}
-
-	for k, v in pairs(devices) do
-		local portIO = io.open("/sys/class/sensor/"..v.."/port_name", "r")
-		local portName = portIO:read("*a")
-		if (portName == port) or port == nil then
-			device.raw.path = "/sys/class/sensor/"..v.."/"
-			device.raw.port_name = portName
-			break
-		end
-		portIO:close()
-	end
-
-	if not device.raw.path then
-		return nil, "no sensor on "..port
-	end
-
-	--The default API
-	device.raw.bin_data = function(self)
-		return getValue(self.path.."bin_data")
-	end
-
-	device.raw.bin_data_format = function(self)
-		return getValue(self.path.."bin_data_format")
-	end
-
-	device.raw.command = function(self, value)
-		setValue(self.path.."command", value)
-	end
-
-	device.raw.commands = stringSplit(getValue(device.raw.path.."commands"))
-
-	device.raw.direct = function(self, value)
-		if value then
-			setValue(self.raw.path.."direct", value)
-		else
-			return getValue(self.raw.path.."direct")
-		end
-	end
-
-	device.raw.decimals = function(self)
-		return getValue(self.path.."decimals")
-	end
-
-	device.raw.driver_name = function(self)
-		return getValue(self.path.."driver_name")
-	end
-
-	device.raw.fw_version = function(self)
-		return getValue(self.path.."fw_version")
-	end
-
-	device.raw.mode = function(self, value)
-		setValue(self.path.."mode", value)
-	end
-
-	device.raw.modes = stringSplit(getValue(device.raw.path.."modes"))
-
-	device.raw.num_values = function(self)
-		return getValue(self.path.."num_values")
-	end
-
-	device.raw.poll_ms = function(self, value)
-		if value then
-			setValue(self.raw.path.."poll_ms", value)
-		else
-			return getValue(self.raw.path.."poll_ms")
-		end
-	end
-
-	--port_name is defined above in the device finding loop
-
-	device.raw.units = function(self)
-		return getValue(self.path.."units")
-	end
-
-	device.raw.value = function(self, value)
-		return getValue(self.path.."value"..value)
-	end
-
-	--Start abstraction layer
-	device.commands = {}
-	for k, v in pairs(device.raw.commands) do
-		device.commands[v] = true
-	end
-
-	device.modes = {}
-	for k, v in pairs(device.raw.modes) do
-		device.stop_commands[v] = true
-	end
-
-	return device
-end
-
-ev3.newColourSensor = function(port)
-	local device = {["sensor"] = ev3.newSensor(port), ["currentMode"] = ""}
-	if not sensor then return "Could not find colour sensor on "..port end
-
-	device.mode = function(self, mode)
-		if self.sensor.modes[mode] then
-			self.sensor.raw:mode(mode)
-			self.currentMode = mode
-		elseif mode == nil then
-			return self.currentMode
-		else
-			return nil, mode.." is not a colour sensor mode."
-		end
-		return true
-	end
-	device:mode("COL-COLOR")
-
-	device.value = function(self)
-		return self.sensor.raw:value(0)
-	end
-
-	return device
-end
-
-ev3.newInfraredSensor = function(port)
-	local device = {["sensor"] = ev3.newSensor(port), ["currentMode"] = ""}
-	if not sensor then return "Could not find infared sensor on "..port end
-
-	device.mode = function(self, mode)
-		if self.sensor.modes then
-			self.sensor.raw:mode(mode)
-			self.currentMode = mode
-		elseif mode == nil then
-			return self.currentMode
-		else
-			return nil, mode.." is not an IR sensor mode."
-		end
-		return true
-	end
-	device:mode("IR-PROX")
-
-	device.proximity = function(self)
-		local result, err = self:mode("IR-PROX")
-		if not result then return nil, err end
-
-		return self.sensor.raw:value(0)
-	end
-
-	device.beacon = function(self, channel)
-		local result, err = self:mode("IR-SEEK")
-		if not result then return nil, err end
-
-		local valueOffset = (channel-1)*2
-		local heading = self.sensor.raw:value(valueOffset)
-		local distance = self.sensor.raw:value(valueOffset+1)
-		local detected = true
-
-		if heading == 0 and distance == -128 then
-			detected = false
-		end
-
-		return {heading, distance, detected}
-	end
-
-	device.remote = function(self, channel)
-		local result, err = self:mode("IR-REMOTE")
-		if not result then return nil, err end
-
-		return self.sensor.raw:value(channel-1)
-	end
-
-	return device
-end
-
-ev3.newTouchSensor = function(port)
-	local device = {["sensor"] = ev3.newSensor(port)}
-	if not sensor then return "Could not find touch sensor on "..port end
-
-	device.sensor.raw:mode("TOUCH")
-
-	device.touch = function(self)
-		if self.sensor.raw:value(0) == 0 then
-			return false
-		else
-			return true
-		end
-	end
-
-	return device
-end
-
-ev3.newUltrasonicSensor = function(port)
-	local device = {["sensor"] = ev3.newSensor(port), ["currentMode"] = ""}
-	if not sensor then return "Could not find ultrasonic sensor on "..port end
-
-	device.mode = function(self, mode)
-		if self.sensor.modes then
-			self.sensor.raw:mode(mode)
-			self.currentMode = mode
-		elseif mode == nil then
-			return self.currentMode
-		else
-			return nil, mode.." is not an ultrasonic sensor mode."
-		end
-		return true
-	end
-	device:mode("US-SI-CM")
-
-	device.distance = function(self)
-		if self.currentMode == "US-LISTEN" then
-			local result, err = self:mode("US-SI-CM")
-			if not result then return nil, err end
-		end
-
-		if self.currentMode == "US-SI-CM" or currentMode == "US-SI-IN" then
-			--In single check mode, must enable the sensor again
-			self:mode(currentMode)
-		end
-		return self.sensor.raw:value(0)/10
-	end
-
-	device.listen = function(self)
-		local result, err = self:mode("US-LISTEN")
-		if not result then return nil, err end
-
-		if self.sensor.raw:value(0) == 0 then
-			return false
-		else
-			return true
-		end
 	end
 end
 
---Buttons
-ev3.getButtons = function()
-	local rawData = io.popen("python buttons.py")
-	local output = {}
-	for i in rawData:lines() do
-		local data = stringSplit(i)
-		local state = false
-		if data[2] == "pressed" then
-			state = true
-		end
-		output[data[1]] = state
+--[[
+
+Tank:
+Provides easy tank-like controls for LEGO motors.
+
+Parameters;
+Motor leftMotor - The left motor in a tank
+Motor rightMotor - The right motor in a tank
+
+--]]
+
+local Tank = class()
+
+function Tank:init(leftMotor, rightMotor)
+	if not leftMotor:is_a(Motor) or not rightMotor:is_a(Motor) then error("Invalid motor provided") end
+
+	self.leftMotor = leftMotor
+	self.rightMotor = rightMotor
+end
+
+function Tank:off(brake)
+	self.leftMotor:off(brake)
+	self.rightMotor:off(brake)
+end
+
+function Tank:on(leftPower, rightPower)
+	self.leftMotor:on(leftPower)
+	self.rightMotor:off(rightPower)
+end
+
+function Tank:on_for_seconds(leftPower, rightPower, seconds, brake, nonBlocking)
+	self.leftMotor:on_for_seconds(leftPower, seconds, brake, true)
+	self.rightMotor:on_for_seconds(rightPower, seconds, brake, nonBlocking)
+end
+
+function Tank:on_for_degrees(leftPower, rightPower, degrees, brake, nonBlocking)
+	self.leftMotor:on_for_degrees(leftPower, degrees, brake, true)
+	self.rightMotor:on_for_degrees(rightPower, degrees, brake, nonBlocking)
+end
+
+function Tank:on_for_rotations(leftPower, rightPower, rotations, brake, nonBlocking)
+	local degrees = rotations*360
+	self.leftMotor:on_for_degrees(leftPower, degrees, brake, true)
+	self.rightMotor:on_for_degrees(rightPower, degrees, brake, nonBlocking)
+end
+
+function Tank:turn(power, direction, brake, nonBlocking)
+	--direction from -90 to face left to 90 to face right
+	self:on_for_degrees(power, -power, direction/2, brake, nonBlocking)
+end
+
+function Tank:turnLeft(power, brake, nonBlocking)
+	self:turn(power, -90, brake, nonBlocking)
+end
+
+function Tank:turnRight(power, brake, nonBlocking)
+	self:turn(power, 90, brake, nonBlocking)
+end
+
+--[[
+
+Sensor:
+The base class for all sensors.
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Sensor = class(Device)
+
+function Sensor:init(port)
+	Device.init(self, port, "lego-sensor")
+
+	self.modes = {}
+	for _, v in pairs(stringSplit(self.attributes["modes"])) do
+		self.modes[v] = true
 	end
-	return output
 end
 
---Output
-os.execute("cls")
-ev3.log = function(value)
-	os.execute("echo "..value.."\n")
-	return true
+function Sensor:setMode(mode)
+	if not self.modes[mode] then error(mode.." is not supported") end
+
+	if self._mode ~= mode then
+		self.attributes["mode"] = mode
+		self._mode = mode
+	end
 end
 
-ev3.playTone = function(hz, seconds)
+--[[
+
+I2C Sensor:
+Used to control a generic I2C sensor
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local I2C_Sensor = class(Sensor)
+
+function I2C_Sensor:init(port)
+	Sensor.init(self, port)
+end
+
+--[[
+
+Touch Sensor:
+Used to control a NXT/EV3 touch sensor.
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Touch_Sensor = class(Sensor)
+
+function Touch_Sensor:init(port)
+	Sensor.init(self, port)
+
+	self:setMode("TOUCH")
+end
+
+function Touch_Sensor:pressed()
+	if self.attributes["value0"] == "1" then
+		return true
+	else
+		return false
+	end
+end
+
+--[[
+
+Colour Sensor:
+Used to control an EV3 colour sensor.
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Colour_Sensor = class(Sensor)
+	
+function Colour_Sensor:init(port)
+	Sensor.init(self, port)
+end
+
+function Colour_Sensor:reflected()
+	self:setMode("COL-REFLECT")
+	return tonumber(self.attributes["value0"])
+end
+
+function Colour_Sensor:ambient()
+	self:setMode("COL-AMBIENT")
+	return tonumber(self.attributes["value0"])
+end
+
+function Colour_Sensor:colour()
+	self:setMode("COL-COLOR")
+	return tonumber(self.attributes["value0"])
+end
+
+--RGB support is VERY experimental. Use at your own risk.
+local rgb_constant = 1020/256 --Used to convert the raw rgb value (0 - 1020) to the usual rgb range (0 - 255)
+function Colour_Sensor:rgb()
+	self:setMode("RGB-RAW")
+
+	local r = math.floor(tonumber(self.attributes["value0"]) / rgb_constant)
+	local g = math.floor(tonumber(self.attributes["value1"]) / rgb_constant)
+	local b = math.floor(tonumber(self.attributes["value2"]) / rgb_constant)
+
+	return r, g, b
+end
+
+--[[
+
+Ultrasonic Sensor:
+Used to control a NXT/EV3 ultrasonic sensor.
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Ultrasonic_Sensor = class(Sensor)
+
+function Ultrasonic_Sensor:init(port)
+	Sensor.init(self, port)
+end
+
+function Ultrasonic_Sensor:distance(mode)
+	self:setMode(mode)
+	return tonumber(self.attributes["value0"]) / 10
+end
+
+function Ultrasonic_Sensor:nearby()
+	self:setMode("US-LISTEN")
+
+	if self.attributes["value0"] == "1" then
+		return true
+	else
+		return false
+	end
+end
+
+--[[
+
+Gyro Sensor:
+Used to control an EV3 gyro sensor.
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Gyro_Sensor = class(Sensor)
+
+function Gyro_Sensor:init(port)
+	Sensor.init(self, port)
+end
+
+function Gyro_Sensor:angle()
+	self:setMode("GYRO-ANG")
+	return tonumber(self.attributes["value0"])
+end
+
+function Gyro_Sensor:rate()
+	self:setMode("GYRO-RATE")
+	return tonumber(self.attributes["value0"])
+end
+
+--[[
+
+Infrared Sensor:
+Used to control an EV3 gyro sensor.
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Infrared_Sensor = class(Sensor)
+
+function Infrared_Sensor:init(port)
+	Sensor.init(self, port)
+end
+
+function Infrared_Sensor:proximity()
+	self:setMode("IR-PROX")
+	return tonumber(self.attributes["value0"])
+end
+
+function Infrared_Sensor:seek(channel)
+	if type(channel) ~= "number" or channel < 1 or channel > 4 then error("Invalid channel") end
+
+	self:setMode("IR-SEEK")
+
+	local valueOffset = (channel-1)*2
+	local heading = tonumber(self.attributes["value"..tostring(valueOffset)])
+	local distance = tonumber(self.attributes["value"..tostring(valueOffset + 1)])
+	local detected = true
+
+	if heading == 0 and distance == -128 then
+		detected = false
+	end
+
+	return {detected, heading, distance}
+end
+
+local remote_buttons = {
+	["262"] = {red={up=false,down=false},blue={up=false,down=false}},
+	["384"] = {red={up=false,down=false},blue={up=false,down=false}},
+	["287"] = {red={up=true,down=false},blue={up=false,down=false}},
+	["300"] = {red={up=false,down=true},blue={up=false,down=false}},
+	["309"] = {red={up=true,down=true},blue={up=false,down=false}},
+	["330"] = {red={up=false,down=false},blue={up=true,down=false}},
+	["339"] = {red={up=true,down=false},blue={up=true,down=false}},
+	["352"] = {red={up=false,down=true},blue={up=true,down=false}},
+	["377"] = {red={up=true,down=true},blue={up=true,down=false}},
+	["390"] = {red={up=false,down=false},blue={up=false,down=true}},
+	["415"] = {red={up=true,down=false},blue={up=false,down=true}},
+	["428"] = {red={up=false,down=true},blue={up=false,down=true}},
+	["437"] = {red={up=true,down=true},blue={up=false,down=true}},
+	["458"] = {red={up=false,down=false},blue={up=true,down=true}},
+	["467"] = {red={up=true,down=false},blue={up=true,down=true}},
+	["480"] = {red={up=false,down=true},blue={up=true,down=true}},
+	["505"] = {red={up=true,down=true},blue={up=true,down=true}},
+}
+function Infrared_Sensor:remote()
+	return remote_buttons[self.attributes["value0"]]
+end
+
+--[[
+
+Sound Sensor:
+Used to control a NXT sound sensor.
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Sound_Sensor = class(Sensor)
+
+function Sound_Sensor:init(port)
+	Sensor.init(self, port)
+end
+
+function Sound_Sensor:pressure()
+	self:setMode("DB")
+	return tonumber(self.attributes["value0"]) / 10
+end
+
+function Sound_Sensor:pressure_low()
+	self:setMode("DBA")
+	return tonumber(self.attributes["value0"]) / 10
+end
+
+--[[
+
+Light Sensor:
+Used to control a NXT light sensor.
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Light_Sensor = class(Sensor)
+
+function Light_Sensor:init(port)
+	Sensor.init(self, port)
+end
+
+function Light_Sensor:reflected()
+	self:setMode("REFLECT")
+	return tonumber(self.attributes["value0"]) / 10
+end
+
+function Light_Sensor:ambient()
+	self:setMode("AMBIENT")
+	return tonumber(self.attributes["value0"]) / 10
+end
+
+--[[
+
+Compass Sensor:
+Used to control a HiTechnic Compass Sensor.
+
+Parameters:
+String port - The port to look for. Constants provided for convenience.
+
+--]]
+
+local Compass_Sensor = class(Sensor)
+
+function Compass_Sensor:init(port)
+	Sensor.init(self, port)
+	self:setMode("COMPASS")
+end
+
+function Compass_Sensor:direction()
+	return tonumber(self.attributes["value0"])
+end
+
+--[[
+
+Sound:
+Play sound through the EV3's internal speaker.
+
+NOTE: Sound is played by running shell commands. The input is not sanitised. DO NOT generate/run sounds based on raw user input!
+
+Parameters:
+
+
+--]]
+
+local Sound = class()
+
+function Sound:playTone(hz, seconds, nonBlocking)
+	if type(hz or 0) ~= "number" or type(seconds or 0) ~= "number" then error("Invalid input") end
+
 	hz = hz or 440
-	time = (seconds or 1)*1000
-	os.execute("beep -f "..hz.." -l "..time)
-	return true
+	local time = (seconds or 1)*1000
+
+	local soundIO = io.open("/sys/devices/platform/snd-legoev3/tone", "w")
+	soundIO:write(tostring(hz).." "..tostring(time))
+	sound:close()
+
+	if nonBlocking == false then
+		sleep(seconds)
+	end
 end
 
-ev3.playFile = function(path)
-	os.execute("aplay "..path)
-	return true
+function Sound:playFile(path, nonBlocking)
+	if type(path) ~= "string" then error("Invalid path") end
+
+	local e = exists(path)
+	if (e[1] and not e[2]) or fastMode then
+		if nonBlocking ~= false then
+			return io.popen("aplay -q "..path, "r")
+		else
+			return os.execute("aplay -q "..path)
+		end
+	else
+		error("File is not playable")
+	end
 end
 
-ev3.speak = function(value)
-	os.execute("espeak --stdout '"..value.."' | aplay -q")
-	return true
+function Sound:speak(text, voice, nonBlocking)
+	if type(text) ~= "string" or type(voice or "") ~= "string" then error("Invalid input") end
+
+	local command = "espeak --stdout '"..text.."'"
+	if voice then
+		command = command.." -v "..voice
+	end
+	command = command.." | aplay -q"
+
+	if nonBlocking ~= false then
+		return io.popen(command, "r")
+	else
+		return os.execute(command)
+	end
 end
+
+--[[
+
+Power Suppy:
+Get information on the power state.
+
+Parameters:
+
+
+--]]
+
+local PowerSupply = class(Device)
+
+function PowerSupply:init()
+	--Command discovery code is ommited, because power supplies do not have the commands attribute
+	local basePath = "/sys/class/power_supply/"
+
+	rawset(self.attributes, "_parent", self)
+
+	local devicePath = basePath..listDir(basePath)[1].."/"
+
+	--Set device info
+	self._path = devicePath
+	self._port = "power_supply"
+	self._type = "power_supply"
+end
+
+function PowerSupply:current()
+	return tonumber(self.attributes["current_now"]) / 1000000
+end
+
+function PowerSupply:voltage()
+	return tonumber(self.attributes["voltage_now"]) / 1000000
+end
+
+--[[
+
+LEDS:
+Control the LED's
+
+Parameters:
+
+
+--]]
+
+local LED = class()
+
+function LED:init(path)
+	self._path = path
+end
+
+function LED:brightness(brightness)
+	if brightness then
+		if type(brightness) ~= "number" or brightness < 0 or brightness > 255 then error("Invalid brightness") end
+
+		local deviceIO = io.open(self._path.."brightness", "w")
+		deviceIO:write(brightness)
+		deviceIO:close()
+		return data
+	else
+		local deviceIO = io.open(self._path.."brightness", "r")
+		local data = tonumber(deviceIO:read("*a"))
+		deviceIO:close()
+		return data
+	end
+end
+
+local LEDS = class()
+
+function LEDS:init()
+	self.left = {
+		red = LED("/sys/class/leds/ev3:left:red:ev3dev/"),
+		green = LED("/sys/class/leds/ev3:left:green:ev3dev/")
+	}
+
+	self.right = {
+		red = LED("/sys/class/leds/ev3:right:red:ev3dev/"),
+		green = LED("/sys/class/leds/ev3:right:green:ev3dev/")
+	}
+end
+
+--[[
+
+Buttons:
+Read button input.
+
+Parameters:
+
+
+--]]
+--[[
+local function test_bit(bit, bytes)
+	if bit.band(bytes[bit / 8 + 1], bit.blshift(1, bit % 8)) == 1 then
+		return false
+	else
+		return true
+	end
+end
+
+local function EVIOCGKEY()
+	return 2153792792
+end
+
+local Buttons = class()
+
+function Buttons:get()
+	local buttonStates = {
+		up = test_bit(103)
+	}
+
+	return buttonStates
+end
+--]]
+
+return {
+	--Utills
+	sleep = sleep,
+
+	--Constants
+	OUTPUT_AUTO = nil,
+	OUTPUT_A = "outA",
+	OUTPUT_B = "outB",
+	OUTPUT_C = "outC",
+	OUTPUT_D = "outD",
+
+	INPUT_AUTO = nil,
+	INPUT_1 = "in1",
+	INPUT_2 = "in2",
+	INPUT_3 = "in3",
+	INPUT_4 = "in4",
+
+	NOCOLOUR = 0,
+	BLACK = 1,
+	BLUE = 2,
+	GREEN = 3,
+	YELLOW = 4,
+	RED = 5,
+	WHITE = 6,
+	BROWN = 7,
+
+	--Generic Device
+	Device = Device,
+
+	--Motors
+	Motor = Motor,
+	DC_Motor = DC_Motor,
+	Servo_Motor = Servo_Motor,
+
+	--Tank
+	Tank = Tank,
+
+	--Generic Sensor
+	Sensor = Sensor,
+
+	--Sensors
+	I2C_Sensor = I2C_Sensor,
+	Touch_Sensor = Touch_Sensor,
+	Colour_Sensor = Colour_Sensor,
+	Ultrasonic_Sensor = Ultrasonic_Sensor,
+	Gyro_Sensor = Gyro_Sensor,
+	Infrared_Sensor = Infrared_Sensor,
+	Sound_Sensor = Sound_Sensor,
+	Light_Sensor = Light_Sensor,
+	Compass_Sensor = Compass_Sensor,
+
+	--Sound
+	Sound = Sound,
+
+	--Power
+	PowerSupply = PowerSupply,
+
+	--LED
+	LEDS = LEDS
+
+	--Buttons
+}
