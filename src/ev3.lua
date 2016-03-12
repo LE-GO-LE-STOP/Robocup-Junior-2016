@@ -698,7 +698,7 @@ function Compass_Sensor:init(port)
 end
 
 function Compass_Sensor:direction()
-	return tonumber(self.attributes["value0"]) + 180 -- Get the value from the sensor and convert it from -180 - 180 to 0 - 360
+	return math.floor(tonumber(self.attributes["value0"]) + 180) -- Get the value from the sensor and convert it from -180 - 180 to 0 - 360
 end
 
 function Compass_Sensor:relativeDirection()
