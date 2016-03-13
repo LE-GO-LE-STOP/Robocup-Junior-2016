@@ -1,5 +1,11 @@
 local Angle
 do
+	local function correctAngle(angle)
+		while angle < 0 do angle = angle + 360 end
+		while angle > 360 do angle = angle - 360 end
+		return angle
+	end
+
 	local mt = {}
 
 	function mt:__unm()
@@ -11,15 +17,15 @@ do
 			-- Left is self
 			if type(right) == "table" then
 				-- Adding 2 angles
-				return Angle(left.angle + right.angle)
+				return correctAngle(left.angle + right.angle)
 			else
 				-- Adding angle and a number
-				return Angle(left.angle + right)
+				return correctAngle(left.angle + right)
 			end
 		else
 			-- Right is self
 			-- Adding angle and a number
-			return Angle(left + right.angle)
+			return correctAngle(left + right.angle)
 		end
 	end
 
@@ -28,24 +34,21 @@ do
 			-- Left is self
 			if type(right) == "table" then
 				-- Subtracting 2 angles
-				return Angle(left.angle - right.angle)
+				return correctAngle(left.angle - right.angle)
 			else
 				-- Subtracting angle and a number
-				return Angle(left.angle - right)
+				return correctAngle(left.angle - right)
 			end
 		else
 			-- Right is self
 			-- Subtracting angle and a number
-			return Angle(left - right.angle)
+			return correctAngle(left - right.angle)
 		end
 	end
 
 	Angle = function(a)
-		if a < 0 then a = a + 360 end
-		if a > 360 then a = a - 360 end
-
 		local angle = {
-			angle = a
+			angle = correctAngle(a)
 		}
 		
 		setmetatable(angle, mt)
