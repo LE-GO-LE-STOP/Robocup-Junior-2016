@@ -47,6 +47,8 @@ do
 	end
 
 	Angle = function(a)
+		if type(a) == "table" then a = a.angle end
+
 		local angle = {
 			angle = correctAngle(a)
 		}
