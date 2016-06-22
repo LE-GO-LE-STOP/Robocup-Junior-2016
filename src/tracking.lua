@@ -1,6 +1,16 @@
 local ev3 = require("ev3")
 local class = require("class").class
 
+local function normaliseAngle(angle)
+	if angle > 360 then
+		angle = angle - 360
+	else if angle < 0 then
+		angle = angle + 360
+	end
+
+	return angle
+end
+
 local Tracker = class()
 
 function Tracker:init(wheelRadius, vehicleRadius, leftMotor, rightMotor)
@@ -30,13 +40,22 @@ function Tracker:on_for_distance(power, distance, brake)
 
 	leftMotor:on_for_degrees(power, d, brake, true)
 	rightMotor:on_for_degrees(power, d, brake, false)
+
+
 end
 
-function Tracker:rotate(power, degrees, brake)
+function Tracker:rotate(power, brake)
+	leftMotor:on(power)
+	rightMotor:on(-power)
+end
+
+function Tracker:rotate_for_degrees(power, degrees, brake)
 	local d = degrees * self.wheelDegreesToRotations
 
 	leftMotor:on_for_degrees(power, d, brake, true)
-	rightMotor:on_for_degrees(power, d, brake, false)
+	rightMotor:on_for_degrees(power, -d, brake, false)
+
+	self.angle = normaliseAngle(self.angle + degrees)
 end
 
 return Tracker
