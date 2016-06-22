@@ -1,7 +1,6 @@
-local debugMode = true -- Fastmode disables fs exist checks in order to speed up IO operations
+local debugMode = true -- Non debug mode disables fs exist checks in order to speed up IO operations
 
 local lfs = require("lfs")
---local bit = require("bit")
 local class = require("class").class
 
 --Util functions
