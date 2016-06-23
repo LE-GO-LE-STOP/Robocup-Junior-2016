@@ -72,8 +72,6 @@ function Device:init(port, dType)
 	local basePath = "/sys/class/"..dType.."/"
 	if not (exists(basePath)[1] or debugMode) then error("Type does not exist") end
 
-	rawset(self.attributes, "_parent", self)
-
 	local devices = listDir(basePath)
 	local found = false
 	for _, v in pairs(devices) do
@@ -84,6 +82,41 @@ function Device:init(port, dType)
 		deviceIO:close()
 		if not port or devicePort == port then
 			--Found device on port requested
+			self.attributes = {["_parent"] = self}
+			local mt = {}
+
+			mt.__index = function(attrTable, name)
+				local self = attrTable._parent
+
+				if not self:connected() then error("Device not connected") end
+
+				local attributePath = self._path..name
+
+				local readIO = io.open(attributePath, "r")
+				if not readIO then error("Attribute '"..name.."' does not exist: "..attributePath) end
+
+				local data = readIO:read("*l") or ""
+				readIO:close()
+
+				return data
+			end
+
+			mt.__newindex = function(attrTable, name, value)
+				local self = attrTable._parent
+
+				if not self:connected() then error("Device not connected") end
+
+				local attributePath = self._path..name
+
+				local writeIO = io.open(attributePath, "w")
+				if not writeIO then error("Attribute '"..name.."' does not exist: "..attributePath) end
+
+				writeIO:write(value)
+				writeIO:close()
+			end
+
+			setmetatable(self.attributes, mt)
+
 			--Set device info
 			self._path = devicePath
 			self._port = devicePort
@@ -104,42 +137,6 @@ end
 
 function Device:connected()
 	return self._path ~= nil
-end
-
---Attribute read/write
-Device.attributes = {}
-do
-	local mt = {}
-
-	mt.__index = function(attrTable, name)
-		local self = attrTable._parent
-
-		if not self:connected() then error("Device not connected") end
-
-		local attributePath = self._path..name
-		if not (exists(attributePath)[1] or debugMode) then error("Attribute '"..name.."' does not exist") end
-
-		local readIO = io.open(attributePath, "r")
-		local data = readIO:read("*l") or ""
-		readIO:close()
-
-		return data
-	end
-
-	mt.__newindex = function(attrTable, name, value)
-		local self = attrTable._parent
-
-		if not self:connected() then error("Device not connected") end
-
-		local attributePath = self._path..name
-		if not (exists(attributePath)[1] or debugMode) then error("Attribute '"..name.."' does not exist") end
-
-		local writeIO = io.open(attributePath, "w")
-		writeIO:write(value)
-		writeIO:close()
-	end
-
-	setmetatable(Device.attributes, mt)
 end
 
 function Device:type()
