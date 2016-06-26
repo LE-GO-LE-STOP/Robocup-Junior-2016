@@ -1,5 +1,6 @@
 from ev3dev.ev3 import Sound as ev3Sound
 from ev3dev.ev3 import Leds
+from ev3dev.ev3 import ButtonEVIO
 
 class Sound:
     @staticmethod
@@ -23,15 +24,12 @@ class Sound:
         if wait:
             process.wait()
 
-class PowerSupply:
-
-
 class LED:
     def __init__(self, baseLED):
         self._baseLED = baseLED
         self._maxBrightness = self._baseLED.max_brightness
 
-    def brightness(self, brt)
+    def brightness(self, brt):
         if brt < 0 or brt > self._maxBrightness:
             print("Invalid brightness: " + str(brt))
 
@@ -42,3 +40,8 @@ class LEDs:
     right = {"red": LED(Leds.red_right), "green": Led(Leds.green_right)}
 
 class Buttons:
+    def __init__(self):
+        self._buttonEVIO = ButtonEVIO()
+
+    def get():
+        return self._buttonEVIO.buttons_pressed
