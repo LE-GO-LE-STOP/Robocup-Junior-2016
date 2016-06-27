@@ -4,21 +4,21 @@ from ev3dev.ev3 import ButtonEVIO as _ButtonEVIO
 
 class Sound:
     @staticmethod
-    def playTone(hz, seconds, wait):
+    def playTone(hz, seconds, wait = False):
         process = _Sound.tone((hz, seconds * 1000))
 
         if wait:
             process.wait()
 
     @staticmethod
-    def playFile(filename, wait):
+    def playFile(filename, wait = False):
         process = _Sound.play(filename)
 
         if wait:
             process.wait()
 
     @staticmethod
-    def speak(text, wait):
+    def speak(text, wait = False):
         process = _Sound.speak(text)
 
         if wait:
