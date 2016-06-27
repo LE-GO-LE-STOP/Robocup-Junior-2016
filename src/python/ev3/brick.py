@@ -1,25 +1,25 @@
-from ev3dev.ev3 import Sound as ev3Sound
-from ev3dev.ev3 import Leds
-from ev3dev.ev3 import ButtonEVIO
+from ev3dev.ev3 import Sound as _Sound
+from ev3dev.ev3 import Leds as _Leds
+from ev3dev.ev3 import ButtonEVIO as _ButtonEVIO
 
 class Sound:
     @staticmethod
     def playTone(hz, seconds, wait):
-        process = ev3Sound.tone((hz, seconds * 1000))
+        process = _Sound.tone((hz, seconds * 1000))
 
         if wait:
             process.wait()
 
     @staticmethod
     def playFile(filename, wait):
-        process = ev3Sound.play(filename)
+        process = _Sound.play(filename)
 
         if wait:
             process.wait()
 
     @staticmethod
     def speak(text, wait):
-        process = ev3Sound.speak(text)
+        process = _Sound.speak(text)
 
         if wait:
             process.wait()
@@ -36,12 +36,12 @@ class LED:
         self._baseLED.brightness = brt
 
 class LEDs:
-    left = {"red": LED(Leds.red_left), "green": Led(Leds.green_left)}
-    right = {"red": LED(Leds.red_right), "green": Led(Leds.green_right)}
+    left = {"red": LED(_Leds.red_left), "green": Led(_Leds.green_left)}
+    right = {"red": LED(_Leds.red_right), "green": Led(_Leds.green_right)}
 
 class Buttons:
     def __init__(self):
-        self._buttonEVIO = ButtonEVIO()
+        self._buttonEVIO = _ButtonEVIO()
 
     def get():
         return self._buttonEVIO.buttons_pressed
