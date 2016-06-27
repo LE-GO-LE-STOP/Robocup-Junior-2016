@@ -19,7 +19,7 @@ class Motor:
 		self._motor.duty_cycle_sp = power
 		self._motor.command = _Motor.COMMAND_RUN_FOREVER
 
-	def onForSeconds(self, power, seconds, brake = False, wait = True)
+	def onForSeconds(self, power, seconds, brake = False, wait = True):
 		if wait:
 			self.on(power)
 			sleep(seconds)
@@ -31,7 +31,7 @@ class Motor:
 
 			self.setBrake(brake)
 
-	def onForDegrees(self, power, degrees, brake = False, wait = True)
+	def onForDegrees(self, power, degrees, brake = False, wait = True):
 		position = degrees * (self._count_per_rot / 360)
 
 		if wait:
@@ -53,5 +53,5 @@ class Motor:
 
 			self.setBrake(brake)
 
-	def onForRotations(self, power, rotations, brake = False, wait = True)
+	def onForRotations(self, power, rotations, brake = False, wait = True):
 		self.onForDegrees(power, rotations * 360, brake, wait)
