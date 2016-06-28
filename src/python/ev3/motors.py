@@ -32,7 +32,7 @@ class Motor:
 			self.setBrake(brake)
 
 	def onForDegrees(self, power, degrees, brake = False, wait = True):
-		position = degrees * (self._count_per_rot / 360)
+		position = degrees * (self._countPerRot / 360)
 
 		if wait:
 			targetPosition = self._motor.position + position
