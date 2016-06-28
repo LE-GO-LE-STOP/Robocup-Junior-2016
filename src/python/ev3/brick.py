@@ -5,7 +5,7 @@ from ev3dev.ev3 import ButtonEVIO as _ButtonEVIO
 class Sound:
     @staticmethod
     def playTone(hz, seconds, wait = False):
-        process = _Sound.tone((hz, seconds * 1000))
+        process = _Sound.tone([(hz, seconds * 1000)])
 
         if wait:
             process.wait()
@@ -36,12 +36,12 @@ class LED:
         self._baseLED.brightness = brt
 
 class LEDs:
-    left = {"red": LED(_Leds.red_left), "green": Led(_Leds.green_left)}
-    right = {"red": LED(_Leds.red_right), "green": Led(_Leds.green_right)}
+    left = {"red": LED(_Leds.red_left), "green": LED(_Leds.green_left)}
+    right = {"red": LED(_Leds.red_right), "green": LED(_Leds.green_right)}
 
 class Buttons:
     def __init__(self):
         self._buttonEVIO = _ButtonEVIO()
 
-    def get():
+    def get(self):
         return self._buttonEVIO.buttons_pressed
