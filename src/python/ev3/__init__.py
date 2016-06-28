@@ -1,3 +1,9 @@
+from .brick import *
+from .sensors import *
+from .motors import *
+from .controllers import *
+from .bluetooth import *
+
 INPUT_AUTO = ""
 INPUT_1 = "in1"
 INPUT_2 = "in2"
