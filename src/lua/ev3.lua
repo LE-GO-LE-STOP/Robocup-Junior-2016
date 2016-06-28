@@ -837,6 +837,7 @@ Parameters:
 
 --]]
 
+--[[
 local PowerSupply = class(Device)
 
 function PowerSupply:init()
@@ -860,6 +861,7 @@ end
 function PowerSupply:voltage()
 	return tonumber(self.attributes["voltage_now"]) / 1000000
 end
+--]]
 
 --[[
 
