@@ -2,7 +2,7 @@ from ev3dev.ev3 import Motor as _Motor
 from time import sleep
 
 class Motor:
-	def __init__(self, port = ""):
+	def __init__(self, port):
 		self._motor = _Motor(port)
 		self._countPerRot = self._motor.count_per_rot
 
