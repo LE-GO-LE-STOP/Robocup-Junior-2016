@@ -1,5 +1,6 @@
-from ev3dev.ev3 import TouchSensor as _TouchSensor
-from ev3dev.ev3 import ColorSensor as _ColourSensor
+from ev3dev.core import TouchSensor as _TouchSensor
+from ev3dev.core import ColorSensor as _ColourSensor
+from ev3dev.core import UltrasonicSensor as _UltrasonicSensor
 from math import floor
 
 class TouchSensor:
@@ -29,3 +30,16 @@ class ColourSensor:
 			floor(self._sensor.green() * _rgbConstant),
 			floor(self._sensor.blue() * _rgbConstant)
 		]
+
+class UltrasonicSensor:
+	def __init__(self, port):
+		self._sensor = _UltrasonicSensor(port)
+
+	def distance(unit = "cm"):
+		if unit == "cm":
+			return self._sensor.distance_centimeters()
+		else:
+			return self._sensor.distance_inches()
+
+	def nearby(self):
+		return self._sensor.other_sensor_present == 1

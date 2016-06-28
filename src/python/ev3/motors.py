@@ -1,4 +1,4 @@
-from ev3dev.ev3 import Motor as _Motor
+from ev3dev.core import Motor as _Motor
 from time import sleep
 
 class Motor:
