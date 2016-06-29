@@ -1,6 +1,6 @@
 from ev3dev.ev3 import Sound as _Sound
 from ev3dev.ev3 import Leds as _Leds
-from ev3dev.ev3 import ButtonEVIO as _ButtonEVIO
+from ev3dev.ev3 import Button as _Button
 
 class Sound:
     @staticmethod
@@ -39,9 +39,4 @@ class LEDs:
     left = {"red": LED(_Leds.red_left), "green": LED(_Leds.green_left)}
     right = {"red": LED(_Leds.red_right), "green": LED(_Leds.green_right)}
 
-class Buttons:
-    def __init__(self):
-        self._buttonEVIO = _ButtonEVIO()
-
-    def get(self):
-        return self._buttonEVIO.buttons_pressed
+Buttons = _Button()
