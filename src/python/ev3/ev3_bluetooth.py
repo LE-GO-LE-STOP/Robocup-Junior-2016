@@ -10,23 +10,20 @@ class BluetoothDiscoveryException(Exception):
 		self.msg = message
 
 class BluetoothSocket:
-	def __init__(protocol):
+	def __init__(self, protocol):
 		if protocol == "RFCOMM":
-			self._socket = bt.BluetoothSocket(bt.RFCOMM)
 			self._protocol = bt.RFCOMM
 		elif protocol == "L2CAP":
-			self._socket = bt.BluetoothSocket(bt.L2CAP)
 			self._protocol = bt.L2CAP
-
-		self._socket.setblocking(0)
+		self._socket = bt.BluetoothSocket(self._protocol)
 
 	def send(self, data):
-		self._socket.sendall(data)
+		self._socket.send(data)
 
 	def receive(self, bufferSize=1024):
 		ready = select.select([self._socket], [], [], 0)
 		if ready[0]:
-			return self._socket.recv(bufferSize)
+			return self._socket.recv(bufferSize).decode("utf-8")
 
 	def close(self):
 		self._socket.close()
@@ -48,7 +45,11 @@ class BluetoothClient(BluetoothSocket):
 					port = service["port"]
 					break
 
-		self._clientSocket.connect((address, port))
+		try:
+			self._socket.connect((address, port))
+		except Exception:
+			pass
+		
 
 class BluetoothServer(BluetoothSocket):
 	def __init__(self, port, protocol="RFCOMM", advertise=False):
@@ -66,9 +67,10 @@ class BluetoothServer(BluetoothSocket):
 			bt.advertise_service(self._socket, EV3BluetoothServiceName, EV3BluetoothServiceUUID)
 
 	def acceptClient(self):
-		clientSocket, address = self._serverSocket.accept()
+		clientSocket, address = self._socket.accept()
 
-		if clientSocket == None
+		if clientSocket == None:
+			return
 
 		client = BluetoothServer_Client(clientSocket)
 		self._clients.append(client)
@@ -95,9 +97,9 @@ class BluetoothServer_Client(BluetoothSocket):
 
 class Bluetooth:
 	@staticmethod
-	def scan(self):
+	def scan():
 		visibleDevices = []
-		devices = bt.discover_devices();
+		devices = bt.discover_devices()
 
 		for address in devices:
 			deviceName = bt.lookup_name(address)
@@ -106,9 +108,9 @@ class Bluetooth:
 		return visibleDevices
 
 	@staticmethod
-	def startServer(self, port, protocol, advertise):
+	def startServer(port, protocol, advertise=False):
 		return BluetoothServer(port, protocol, advertise)
 
 	@staticmethod
-	def connect(self, address, port):
+	def connect(address, port):
 		return BluetoothClient(address, port)
