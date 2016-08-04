@@ -8,7 +8,7 @@ class Motor:
 
 	def setBrake(self, brake = False):
 		if brake:
-			self._motor.stop_action = brake
+			self._motor.stop_command = brake
 
 	def off(self, brake):
 		self.setBrake(brake = brake)

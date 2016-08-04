@@ -8,7 +8,7 @@ class TouchSensor:
 	def __init__(self, port):
 		self._sensor = _TouchSensor(port)
 
-	def pressed(self)
+	def pressed(self):
 		return self._sensor.is_pressed() == 1
 
 class ColourSensor:
@@ -65,17 +65,17 @@ class InfraredSensor:
 
 	_simpleSensorStates = [
 		{"red":{"up":False,"down":False},"blue":{"up":False,"down":False},"beacon":False}, # None
-		{"red":{"up":True,"down":False},"blue":{"up":False,"down":False},"beacon":False}}, # Red up
-		{"red":{"up":False,"down":True},"blue":{"up":False,"down":False},"beacon":False}}, # Red down
-		{"red":{"up":False,"down":False},"blue":{"up":True,"down":False},"beacon":False}}, # Blue up
-		{"red":{"up":False,"down":False},"blue":{"up":False,"down":True},"beacon":False}}, # Blue down
-		{"red":{"up":True,"down":False},"blue":{"up":True,"down":False},"beacon":False}}, # Red up, blue up
-		{"red":{"up":True,"down":False},"blue":{"up":False,"down":True},"beacon":False}}, # Red up, blue down
-		{"red":{"up":False,"down":True},"blue":{"up":True,"down":False},"beacon":False}}, # Red down, blue up
-		{"red":{"up":False,"down":True},"blue":{"up":False,"down":True},"beacon":False}}, # Red down, blue down
+		{"red":{"up":True,"down":False},"blue":{"up":False,"down":False},"beacon":False}, # Red up
+		{"red":{"up":False,"down":True},"blue":{"up":False,"down":False},"beacon":False}, # Red down
+		{"red":{"up":False,"down":False},"blue":{"up":True,"down":False},"beacon":False}, # Blue up
+		{"red":{"up":False,"down":False},"blue":{"up":False,"down":True},"beacon":False}, # Blue down
+		{"red":{"up":True,"down":False},"blue":{"up":True,"down":False},"beacon":False}, # Red up, blue up
+		{"red":{"up":True,"down":False},"blue":{"up":False,"down":True},"beacon":False}, # Red up, blue down
+		{"red":{"up":False,"down":True},"blue":{"up":True,"down":False},"beacon":False}, # Red down, blue up
+		{"red":{"up":False,"down":True},"blue":{"up":False,"down":True},"beacon":False}, # Red down, blue down
 		{"red":{"up":False,"down":False},"blue":{"up":False,"down":False},"beacon":True}, # Beacon
-		{"red":{"up":True,"down":True},"blue":{"up":False,"down":False},"beacon":False}}, # Red up, red down
-		{"red":{"up":False,"down":False},"blue":{"up":True,"down":True},"beacon":False}} # Blue up, blue down
+		{"red":{"up":True,"down":True},"blue":{"up":False,"down":False},"beacon":False}, # Red up, red down
+		{"red":{"up":False,"down":False},"blue":{"up":True,"down":True},"beacon":False} # Blue up, blue down
 	]
 	def remote(self, channel = 1):
 		if channel == 1:

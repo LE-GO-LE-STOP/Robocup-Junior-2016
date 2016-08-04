@@ -39,4 +39,4 @@ class LEDs:
     left = {"red": LED(_Leds.red_left), "green": LED(_Leds.green_left)}
     right = {"red": LED(_Leds.red_right), "green": LED(_Leds.green_right)}
 
-Buttons = _Button()
+#Buttons = _Button()
