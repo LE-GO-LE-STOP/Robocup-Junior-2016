@@ -1,6 +1,8 @@
 from math import pi
 from time import sleep
 
+clawMotor = ev3.Motor("outB")
+
 WHEEL_CIRCUMFERENCE = 13.19
 AXLE_LENGTH = 10
 WATER_TOWER_DETECT_DISTANCE = 8
@@ -51,5 +53,17 @@ def detectRescueZone():
     reverseMinAngle = angleToDegrees(180 - minAngle)
     leftMotor.onForDegrees(-BASE_POWER, reverseMinAngle, "brake", False)
     rightMotor.onForDegrees(BASE_POWER, reverseMinAngle, "brake", True)
+    
+    canRotations = minDistance / WHEEL_CIRCUMFERENCE
+    leftMotor.onForRotations(BASE_POWER, canRotations, "brake", False)
+    rightMotor.onForRotations(BASE_POWER, canRotations, "brake", True)
+    
+    clawMotor.on(100)
+    
+    leftMotor.onForRotations(-BASE_POWER, canRotations, "brake", False)
+    rightMotor.onForRotations(-BASE_POWER, canRotations, "brake", True)
+    
+    leftMotor.onForDegrees(BASE_POWER, reverseMinAngle, "brake", False)
+    rightMotor.onForDegrees(-BASE_POWER, reverseMinAngle, "brake", True)
     
     
