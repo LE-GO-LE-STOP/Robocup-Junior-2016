@@ -10,6 +10,8 @@ clawMotor = ev3.Motor("outB")
 leftSensor = ev3.ColourSensor("in1")
 rightSensor = ev3.ColourSensor("in4")
 
+SILVER = 0
+
 ultrasonicSensor = ev3.UltrasonicSensor("in2")
 
 Buttons = Button()
@@ -21,15 +23,6 @@ TURNING_DIAMETRE = 10.5
 WATER_TOWER_DETECT_DISTANCE = 8
 WATER_TOWER_DETECT_ANGLE = 40
 WATER_TOWER_DETECT_ANGLED_DISTANCE = 10.44 # 8 / cos(40)
-
-WHITELEFT = 0
-WHITERIGHT = 0
-BLACKLEFT = 0
-BLACKRIGHT = 0
-GREENLEFT = 0
-GREENRIGHT = 0
-SILVERLEFT = 0
-SILVERRIGHT = 0
 
 def withinrange(x, y, range):
 	return (x - range/2 <= y) and (x + range/2 >= y)
@@ -50,52 +43,33 @@ def calibrate():
 			pass
 		return leftSensor.reflected()
 
-	print("White: ")
-	WHITELEFT = cal()
-	print(str(WHITELEFT))
-	WHITERIGHT = cal()
-	print(str(WHITERIGHT))
-	print("Black: ")
-	BLACKLEFT = cal()
-	print(str(BLACKLEFT))
-	BLACKRIGHT = cal()
-	print(str(BLACKRIGHT))
-	print("Green: ")
-	GREENLEFT = cal()
-	print(str(GREENLEFT))
-	GREENRIGHT = cal()
-	print(str(GREENRIGHT))
 	print("Silver: ")
-	SILVERLEFT = cal()
-	print(str(SILVERLEFT))
-	SILVERRIGHT = cal()
-	print(str(SILVERRIGHT))
-	print("Calibrated!")
+	SILVER = cal()
 
 def followLine():
-	if iscolour(rightSensor.reflected(), BLACKRIGHT):
+	if rightSensor.colour() == 1:
 		leftMotor.on(BASE_POWER + 15)
 		rightMotor.on(BASE_POWER)
-		while iscolour(rightSensor.reflected(), BLACKRIGHT):
+		while rightSensor.colour() == 1:
 			pass
 		leftMotor.on(BASE_POWER)
 
-	if iscolour(leftSensor.reflected(), BLACKLEFT):
+	if leftSensor.colour() == 1:
 		leftMotor.on(BASE_POWER)
 		rightMotor.on(BASE_POWER + 15)
-		while iscolour(leftSensor.reflected(), BLACKLEFT):
+		while leftSensor.colour() == 1:
 			pass
 		rightMotor.on(BASE_POWER)
 
 def detectGreenTile():
-	if iscolour(leftSensor.reflected(), GREENLEFT):
+	if leftSensor.colour() == 3:
 		leftMotor.on(BASE_POWER - 30)
 		rightMotor.on(BASE_POWER + 20)
 		sleep(2)
 		leftMotor.on(BASE_POWER)
 		rightMotor.on(BASE_POWER)
 
-	if iscolour(rightSensor.reflected(), GREENRIGHT):
+	if rightSensor.colour() == 3:
 		leftMotor.on(BASE_POWER + 20)
 		rightMotor.on(BASE_POWER - 30)
 		sleep(2)
@@ -123,7 +97,7 @@ def slope():
   pass
 
 def detectRescueZone():
-  if iscolour(leftSensor.reflected(), SILVERLEFT) and iscolour(rightSensor.reflected(), SILVERRIGHT):
+  if iscolor(leftSensor.reflected(), SILVER) and iscolour(rightSensor.reflected(), SILVER):
     degrees = angleToDegrees(90)
     degree = angleToDegrees(1)
     leftMotor.onForDegrees(-BASE_POWER, degrees, "brake", False)
